@@ -1,2 +1,2 @@
 # UDS
-Repository for urban data science.
+Repository for Urban Data Science through Social Media.
