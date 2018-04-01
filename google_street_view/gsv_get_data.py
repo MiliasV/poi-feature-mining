@@ -30,7 +30,7 @@ def create_non_exist_dir(directory):
         os.makedirs(directory)
 
 
-def save_show_img(filename, show_flag, save_flag, duration):
+def save_show_img(filename, save_flag, show_flag, duration):
     if show_flag:
         # Load an color image in grayscale
         cv2.namedWindow(filename)  # Create a named window
@@ -48,8 +48,8 @@ COUNTRY_FOLDER = "/home/administrator/Desktop/UDS/google_street_view/downloads/"
 CITY_FOLDER = COUNTRY_FOLDER + "/" + CITY
 POINTS_FOLDER = "/home/administrator/Desktop/UDS/geodata/" + COUNTRY + "_geodata/" + COUNTRY[0:3] + "_lat_lon_points.csv"
 
-create_non_exist_dir(COUNTRY_FOLDER)
-create_non_exist_dir(CITY_FOLDER)
+#create_non_exist_dir(COUNTRY_FOLDER)
+#create_non_exist_dir(CITY_FOLDER)
 
 coord_dict = {"amsterdam": [4.728856, 52.278139, 5.06839, 52.431157],
               "athens": [23.623584, 37.939286, 23.873866, 38.059408],
@@ -80,11 +80,11 @@ for i in range(100):
                       long + "_head_" + \
                       head + ".jpg"
         try:
-            os.rename(CITY_FOLDER + "/gsv_0.jpg", filename)
+            #os.rename(CITY_FOLDER + "/gsv_0.jpg", filename)
             print("Image OK\n")
         except Exception as err:
             print(err)
             break
 
-        save_show_img(filename, True, False, 600)
+        save_show_img(filename, False, True, 600)
 
