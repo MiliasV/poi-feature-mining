@@ -1,60 +1,149 @@
 import sqlite3
 import osm_pois.get_osm_data as get_osm_data
-import foursquare_folder.get_foursquare_data as fsq
+import foursquare_my.get_foursquare_data as fsq
 from difflib import SequenceMatcher
+import google.get_gplaces_data as get_gplaces_data
+from pyxdameraulevenshtein import damerau_levenshtein_distance, normalized_damerau_levenshtein_distance
+import fuzzy
+import Levenshtein
 from nltk.corpus import wordnet
+from transliterate import translit, get_available_language_codes
+from geopy.distance import vincenty
 
 
-def similar(a, b):
+def longest_substring(str1, str2):
+    # source: https://www.geeksforgeeks.org/sequencematcher-in-python-for-longest-common-substring/
+    # initialize SequenceMatcher object with
+    # input string
+    seq_match = SequenceMatcher(None, str1, str2)
+
+    # find match of longest sub-string
+    # output will be like Match(a=0, b=0, size=5)
+    match = seq_match.find_longest_match(0, len(str1), 0, len(str2))
+
+    # print longest substring
+    if (match.size != 0):
+        return str1[match.a: match.a + match.size]
+    else:
+        return ""
+
+
+def get_ro_similarity(a, b):
+    # based on Ratcliff and Obershelp's algorithm
     return SequenceMatcher(None, a, b).ratio()
+
+
+def get_name_in_latin_alph(name):
+    try:
+        return translit(name, reversed=True)
+    except:
+        return name
+
+
+def get_levenshtein_phonetic_similarity(osm_name, source_name):
+    print(osm_name, source_name)
+    dmeta = fuzzy.DMetaphone()
+    try:
+        dmeta_osm = dmeta(osm_name)[0]#.decode("utf-8")
+        dmeta_source = dmeta(source_name)[0]#.decode("utf-8")
+    except:
+        return None
+    return Levenshtein.ratio(dmeta_osm, dmeta_source)
+
+
+def get_name_similarity(osm_name, source_name):
+    similarities = {
+        "long_substring": longest_substring(osm_name, source_name),
+        "ro_similarity": get_ro_similarity(osm_name, source_name),
+        "dleven_similarity": 1 - normalized_damerau_levenshtein_distance(osm_name, source_name),
+        "leven_similarity": Levenshtein.ratio(osm_name, source_name),
+        "phonetic_similarity" : get_levenshtein_phonetic_similarity(osm_name, source_name),
+    }
+    similarities["len_long_substring"] = len(similarities["long_substring"])
+    return similarities
 
 
 def get_similarity_score(osm_info, source_info):
     num_attr = 0
     score = 0
-    for attr in ["name", "street", "street_num", "website", "type"]:
+    # Pre-processing
+    osm_name = str(osm_info["name"]).lower()
+    source_name = str(source_info["name"]).lower()
+    # Make the alphabet latin for the Greek letters
+    osm_name_lat = get_name_in_latin_alph(osm_name)
+    source_name_lat = get_name_in_latin_alph(source_name)
+
+    # compute name similarity
+    sims = get_name_similarity(osm_name_lat, source_name_lat)
+    # compute distance
+    sims["distance"] = vincenty((osm_info["ll"][0][1], osm_info["ll"][0][2]), (source_info["lat"], source_info["lng"])).m
+
+    for attr in ["name", "street", "street_num", "website"]:#, "type"]:
         if osm_info.get(attr) and source_info.get(attr):
             # check both long and short type description from foursquare
             if attr == "type":
-                score += max((similar(str(osm_info[attr]), str(source_info[attr][0])),
-                               similar(str(osm_info[attr]), str(source_info[attr][1]))
-                              ))
+                score += max((get_ro_similarity(str(osm_info[attr]), str(source_info[attr][0])),
+                               get_ro_similarity(str(osm_info[attr]), str(source_info[attr][1]))))
             else:
-                score += similar(str(osm_info[attr]), str(source_info[attr]))
+                score += get_ro_similarity(str(osm_info[attr]), str(source_info[attr]))
             num_attr += 1
-    return float(score)/num_attr, num_attr
+
+    return float(score)/num_attr, num_attr, sims
 
 
-def get_best_match_from_foursquare(c, poi_id, ll, radius, osm_info):
+def get_matches_from_google(osm_info, rad):
+    google_places = get_gplaces_data.setup()
+    lat_lng = {"lat": str(osm_info["ll"][0][1]), "lng":str(osm_info["ll"][0][2])}
+    query_results = get_gplaces_data.get_places_by_ll(google_places, lat_lng, rad)
+    gg_info = {}
+    for place in query_results.places:
+        id = place.place_id
+        gg_info[id] = get_gplaces_data.get_data_for_matching(place)
+        gg_info[id]["score"], gg_info[id]["num_attr"], gg_info[id]["sim_dict"] = get_similarity_score(osm_info, gg_info[id])
+    return gg_info
+
+
+def get_matches_from_foursquare(osm_info, radius):
     # translate ll for fourquare API
-    ll = str(ll[0][1]) + "," + str(ll[0][2])
+    ll = str(osm_info["ll"][0][1]) + "," + str(osm_info["ll"][0][2])
     # define fs client
     fsq_client = fsq.setup()
     # first filter: in that radius
     fsq_venues = fsq.get_venues_by_ll(fsq_client, ll, radius)
-
+    fs_info = {}
     if not fsq_venues["venues"]:
-        print("No venues found in radius = ", radius, " m")
+        #print("No venues found in radius = ", radius, " m")
         return 0
 
     for venue in fsq_venues["venues"]:
-        fs_info = {}
-        # get info from foursquare
-        fs_info["name"] = venue["name"]
-        fs_info["street"], fs_info["street_num"] = fsq.get_addr_from_venue(venue)
-        fs_info["type"] = fsq.get_type_from_venue(venue)
-        fs_info["website"] = fsq.get_website_from_venue(venue)
-        print(venue)
-        similarity, attr_num = get_similarity_score(osm_info, fs_info)
-        if similarity > 0.1:
-            print("Similarity score =  ", similarity *100, "%")
-            print("Attributes counted:", attr_num)
-            print("# OSM: ", osm_info)
-            print("# FS INFO: ", fs_info)
+        id = venue["id"]
+        fs_info[id] = fsq.get_data_for_matching(venue)
+        fs_info[id]["score"], fs_info[id]["num_attr"] , fs_info[id]["sim_dict"]= get_similarity_score(osm_info, fs_info[id])
 
-        else:
-            print("Nothing similar found")
+    return  fs_info
         #photos = client.venues.photos(VENUE_ID="4efe05970e01089c53e3764a", params={})
+
+
+def get_max_score_from_dict(dict):
+    max = -1
+    id = '1'
+    for i, v in dict.items():
+        if float(v["score"]) > max:
+            max = v["score"]
+            id = i
+    return id
+
+
+def show_matches(source, osm_info, rad):
+    if source =="FSQ":
+        matches = get_matches_from_foursquare(osm_info, rad)
+    elif source == "Goo":
+        matches = get_matches_from_google(osm_info, rad)
+    if matches:
+        best = get_max_score_from_dict(matches)
+        print("~", source, "(", matches[best]["score"], ") : ", matches[best])
+    else:
+        print("~", source, ": Not Found")
 
 
 if __name__ == "__main__":
@@ -62,7 +151,7 @@ if __name__ == "__main__":
     ams_db ='../../databases/ams_bb.db'
     ath_db = '../../databases/ath_bb.db'
     # select osm db
-    DB = ams_db
+    DB = ath_db
     # connect to osm db
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -74,8 +163,10 @@ if __name__ == "__main__":
     # choose radius (how far from the osm ll)
     rad = 20
     count = 0
-    # For each poi
-    for poi in pois_ids[10:20]:
+    ###############
+    # FOR EACH POI#
+    ###############
+    for poi in pois_ids[40:50]:
         osm_info = {}
         poi_id = poi[0]
         print("##########  POI ( ", poi_id," ) | Loop: ", count, "####################################################################")
@@ -84,16 +175,11 @@ if __name__ == "__main__":
         osm_info["name"] = get_osm_data.get_name_from_id(c, poi_id)
         # continue if there is at least a name (restriction)
         if osm_info["name"]:
-            osm_info["street"] = get_osm_data.get_street_from_id(c, poi_id)
-            osm_info["street_num"] = get_osm_data.get_street_num_from_id(c, poi_id)
-            osm_info["type"] = get_osm_data.get_type_from_id(c, poi_id)
-            osm_info["website"] = get_osm_data.get_website_from_id(c, poi_id)
-            # get longtitude and latitude
-            osm_info["ll"] = get_osm_data.get_lat_long_from_id(c, poi_id)
-            get_best_match_from_foursquare(c, poi[0], osm_info["ll"], rad, osm_info)# > 0.5:
-            #     print("MATCHED !")
+            osm_info = get_osm_data.get_data_for_matching(osm_info, c, poi_id)
+            print("~ OSM : ", osm_info)
+            #show_matches("Goo", osm_info, rad)
+            show_matches("FSQ", osm_info, rad)
             print("########################################################################################")
 
     # Foursquare Enrichment
-
     #osm_name[0][2], osm_type, osm_addr,
