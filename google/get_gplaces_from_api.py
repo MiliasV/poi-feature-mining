@@ -6,8 +6,8 @@ import sqlite3
 import pprint
 import simplejson as json
 import populartimes
-import create_pois_table
-
+import pois_storing_functions
+import get_map_points_to_search
 
 ##########################################################
 # Script for finding and storing POIs from Google Places #
@@ -20,38 +20,50 @@ def setup():
 
 
 def extract_data_from_json(google_json):
-    name = google_json["name"]
-    id = google_json["place_id"]
-    pop_times = google_json["poptimes"]
-    reviews_count = 0
-    photos_count = 0
+    res = {}
+    res["name"] = google_json["name"]
+    res["id"] = google_json["place_id"]
+    #res["pop_times"] = google_json["poptimes"]
+    res["rating"] = None
+    if "rating" in google_json:
+        res["rating"] = google_json["rating"]
+    res["website"] = None
+    if "website" in google_json:
+        res["website"] = google_json["website"]
+    res["streetlng"], res["streetnumlng"], res["streetsrt"], res["streetnumsrt"] = None, None, None, None
+    for addr_details in google_json["address_components"]:
+        if addr_details["types"][0] == "route":
+            res["streetlng"] = addr_details["long_name"]
+            res["streetsrt"] = addr_details["short_name"]
+        elif addr_details["types"][0] == "street_number":
+            res["streetnumlng"] = addr_details["long_name"]
+            res["streetnumsrt"] = addr_details["short_name"]
+    res["rscount"] = 0
+    res["phcount"] = 0
     if "reviews" in google_json:
-        reviews_count = len(google_json["reviews"])
-
+        res["rscount"] = len(google_json["reviews"])
     if "photos" in google_json:
-        photos_count = len(google_json["photos"])
-
+        res["phcount"] = len(google_json["photos"])
     # at least 5 types to be inserted
     while len(google_json["types"])<5:
         google_json["types"].append(None)
-
-    lat = google_json["geometry"]["location"]["lat"]
-    lng = google_json["geometry"]["location"]["lng"]
-    return id, name, google_json["types"], reviews_count, photos_count, pop_times, lat, lng
+    for i in range(5):
+        res["type" + str(i+1)] = google_json["types"][i]
+    res["lat"] = google_json["geometry"]["location"]["lat"]
+    res["lng"] = google_json["geometry"]["location"]["lng"]
+    return res
 
 
 def insert_data(session, GTable, search_lat, search_lng, google_json, ogc_fid,
                 count_places, count_duplicates):
-    gid, name, types, reviews_count, photos_count, pop_times, lat, lng = extract_data_from_json(google_json)
-    json_string = json.dumps(google_json)
-    geo = 'POINT({} {})'.format(lng, lat)
+    res = extract_data_from_json(google_json)
+    res["json"] = json.dumps(google_json)
+    res["geom"] = 'POINT({} {})'.format(res["lng"], res["lat"])
+    res["searchlat"] = search_lat
+    res["searchlng"] = search_lng
+    res["originalpointindex"] = ogc_fid
     try:
-        session.add(
-            GTable(id=gid, originalpointindex=ogc_fid, name=name, type1=types[0], type2= types[1], type3= types[2],
-                   type4= types[3], type5 = types[4], rscount=reviews_count,
-                   phcount=photos_count, lat=lat, lng=lng, searchlat=search_lat,
-                   searchlng=search_lng, poptimes=pop_times, geom=geo,
-                   json=json_string))
+        session.add(GTable(**res))
         session.commit()
         count_places += 1
         print("~~ ", google_json["name"], " INSERTED!")
@@ -77,19 +89,14 @@ def get_places_by_ll(google_places, ll, rad):
 
 
 def get_pop_times_from_id(api_key, place_id):
-    pop_times = populartimes.get_id(api_key, place_id)
+    try:
+        pop_times = populartimes.get_id(api_key, place_id)
+    except:
+        return None
     if "populartimes" in pop_times:
-        pop_times_string = json.dumps(pop_times["populartimes"])
+        return json.dumps(pop_times["populartimes"])
     else:
-        pop_times_string = None
-    return pop_times_string
-
-
-def get_last_id_from_logfile(logfile):
-    with open(logfile, "r") as f:
-        lines = f.readlines()
-        f.close()
-        return int(lines[-1])
+        return None
 
 
 def add_pop_times_in_places(api_key, query_results):
@@ -103,24 +110,11 @@ def add_pop_times_in_places(api_key, query_results):
 
 if __name__ == "__main__":
     google_places, api_key = setup()
-    city = "ams"
-    rad = 20
-    count = 0
-    # databases
-    center_db = "/home/bill/Desktop/thesis/maps/" + city + "_center_centroids_40.sqlite"
-    logfile = "/home/bill/Desktop/thesis/logfiles/" + city + "_point_iterations.txt"
-    DB = center_db
-    # connect to osm db
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    last_searched_id = get_last_id_from_logfile(logfile)
-    c.execute("SELECT ogc_fid, lat, Lon "
-              "FROM ams_center_centroids_40 "
-              "WHERE id>={last_id}-1".format(last_id=last_searched_id))
-    # setup table and session
+    c, rad, logfile = get_map_points_to_search.config_parameters_for_searching("google")
+    last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
     # define which table
-    session, GTable, CTable = create_pois_table.setup_db("google_ams_center_40",
-                                                         "google_ams_center_40_count")
+    session, GTable, CTable = pois_storing_functions.setup_db("google_ams_center_40",
+                                                         "google_ams_center_40_count", "google")
     #define types we don't care about
     google_not_wanted_types = ["route"]
     # For each point --> search nearby in google
@@ -129,16 +123,16 @@ if __name__ == "__main__":
         count_duplicates = 0
         print("POINT: ", ogc_fid, point_lat, point_lng)
         # keep the id of the last searched point
-        with open(logfile, "w") as text_file:
-            print(f"Last searched point \n{ogc_fid}", file=text_file)
-            text_file.close()
+        get_map_points_to_search.log_last_searched_point(logfile, ogc_fid)
         ll = {"lat": str(point_lat), "lng": str(point_lng)}
         query_results = google_places.nearby_search(lat_lng=ll, radius=rad)
-        query_results.places = add_pop_times_in_places(api_key, query_results)
+        # wrong types=["restaurant", "pharmacy","cafe", "store", "gym","hospital", "school", "bar"])
+        # if I want to include popular times
+        #places_extended = add_pop_times_in_places(api_key, query_results)
         # for each place gotten from google
         for place in query_results.places:
+            place.get_details()
             google_json = place.details
-            gid = google_json["place_id"]
             if not any(x in google_not_wanted_types for x in google_json["types"]):
                 count_places, count_duplicates = insert_data(session, GTable, point_lat,
                                                              point_lng, google_json, ogc_fid,

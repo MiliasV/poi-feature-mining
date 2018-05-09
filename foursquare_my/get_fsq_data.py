@@ -46,7 +46,7 @@ def get_addr_from_venue(venue):
             num = num[0]
         return street, num
     else:
-        return [], []
+        return None, None
 
 
 def get_type_from_venue(venue):
