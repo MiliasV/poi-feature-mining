@@ -77,12 +77,6 @@ def insert_data(session, FTable, search_lat, search_lng, fsq_json, ogc_fid,
     try:
         session.add(
             FTable(**res))
-            # FTable(id=res["id"], originalpointindex=ogc_fid, name=res["name"], type1=types[0], type2= types[1],
-            #        type3= types[2], type4= types[3], type5 = types[4], website=res["website"],
-            #        street=res["street"], streetnum = res["street_num"],
-            #        rscount=reviews_count, phcount=photos_count,
-            #        lat=lat, lng=lng, searchlat=search_lat, searchlng=search_lng, poptimes=pop_times,
-            #        geom=geo, json=json_string))
         session.commit()
         count_places += 1
         print("~~ ", fsq_json["name"], " INSERTED!")
@@ -98,7 +92,6 @@ if __name__ == '__main__':
     cl = setup()
     c, rad, logfile = get_map_points_to_search.config_parameters_for_searching("fsq")
     last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
-
     # setup table and session
     # define which table (fsq table, count table)
     pp = pprint.PrettyPrinter(indent=4)
@@ -123,14 +116,36 @@ if __name__ == '__main__':
         # nightlife spot = 4d4b7105d754a06376d81259
         # outdoor & recreation = 4d4b7105d754a06377d81259
         # food and drink shop = 4bf58dd8d48988d1f9941735
-        categories = "4d4b7105d754a06374d81259,4d4b7104d754a06370d81259,4d4b7105d754a06372d81259," \
-                     "4d4b7105d754a06376d81259,4bf58dd8d48988d1f9941735"
+        # outdoors and recreation = 4d4b7105d754a06377d81259
+        # Bank = 4bf58dd8d48988d10a951735
+        # clithing store = 4bf58dd8d48988d103951735
+        # drugstore = 5745c2e4498e11e7bccabdbd
+        # Bus station = 4bf58dd8d48988d1fe931735
+        # Bus stop = 52f2ab2ebcbc57f1066b8b4f
+        # hotel = 4bf58dd8d48988d1fa931735
+        # train station = 4bf58dd8d48988d129951735
+        # tram station = 52f2ab2ebcbc57f1066b8b51
+        categories = "4d4b7105d754a06374d81259," \
+                     "4d4b7104d754a06370d81259," \
+                     "4d4b7105d754a06372d81259," \
+                     "4d4b7105d754a06376d81259," \
+                     "4d4b7105d754a06377d81259,"\
+                     "4d4b7105d754a06377d81259,"\
+                     "4bf58dd8d48988d1f9941735,"\
+                     "4bf58dd8d48988d10a951735," \
+                     "4bf58dd8d48988d103951735," \
+                     "5745c2e4498e11e7bccabdbd," \
+                     "4bf58dd8d48988d1fe931735," \
+                     "52f2ab2ebcbc57f1066b8b4f," \
+                     "4bf58dd8d48988d1fa931735," \
+                     "4bf58dd8d48988d129951735," \
+                     "52f2ab2ebcbc57f1066b8b51"
         venues = get_fsq_data.get_venues_by_ll(cl, ll, rad, categories)
         for venue in venues["venues"]:
             fsq_json = get_fsq_data.get_venue_details(cl, venue["id"])
             #count_places, count_duplicates =\
             lat = fsq_json["location"]["lat"]
             lng = fsq_json["location"]["lng"]
-            count_places , count_duplicates = insert_data(session, FTable, point_lat, point_lng, fsq_json, ogc_fid,
+            count_places, count_duplicates = insert_data(session, FTable, point_lat, point_lng, fsq_json, ogc_fid,
                             count_places, count_duplicates, categories_tree)
             pois_storing_functions.insert_count_data(session, CTable, ogc_fid, count_places, count_duplicates)

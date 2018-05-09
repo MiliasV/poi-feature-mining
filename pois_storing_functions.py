@@ -1,7 +1,7 @@
 from sqlalchemy.ext.automap import automap_base
 from geoalchemy2 import Geometry
 from sqlalchemy import *
-from sqlalchemy.orm import  Session
+from sqlalchemy.orm import Session
 
 
 def create_fsq_pois_table(engine, table_name, metadata):
@@ -114,6 +114,7 @@ def get_last_id_from_logfile(logfile):
         lines = f.readlines()
         f.close()
         return int(lines[-1])
+
 
 def insert_count_data(session, CTable, poi_number, count_places, count_dupl):
     try:

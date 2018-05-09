@@ -8,6 +8,7 @@ import simplejson as json
 import populartimes
 import pois_storing_functions
 import get_map_points_to_search
+import urllib
 
 ##########################################################
 # Script for finding and storing POIs from Google Places #
@@ -131,7 +132,12 @@ if __name__ == "__main__":
         #places_extended = add_pop_times_in_places(api_key, query_results)
         # for each place gotten from google
         for place in query_results.places:
-            place.get_details()
+            # put a try except
+            try:
+                place.get_details()
+            except urllib.error.URLError:
+                while True:
+                    print("I founddd IT")
             google_json = place.details
             if not any(x in google_not_wanted_types for x in google_json["types"]):
                 count_places, count_duplicates = insert_data(session, GTable, point_lat,
