@@ -41,6 +41,10 @@ def extract_data_from_json(google_json):
             res["streetnumsrt"] = addr_details["short_name"]
     res["rscount"] = 0
     res["phcount"] = 0
+    res["poptimes"] = google_json["poptimes"]
+    res["phone"] = None
+    if "international_phone_number" in google_json:
+        res["phone"] = google_json["international_phone_number"]
     if "reviews" in google_json:
         res["rscount"] = len(google_json["reviews"])
     if "photos" in google_json:
@@ -114,8 +118,8 @@ if __name__ == "__main__":
     c, rad, logfile = get_map_points_to_search.config_parameters_for_searching("google")
     last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
     # define which table
-    session, GTable, CTable = pois_storing_functions.setup_db("google_ams_center_40",
-                                                         "google_ams_center_40_count", "google")
+    session, GTable, CTable = pois_storing_functions.setup_db("google_ams_center_40_compl",
+                                                         "google_ams_center_40_count_compl", "google")
     #define types we don't care about
     google_not_wanted_types = ["route"]
     # For each point --> search nearby in google
@@ -127,11 +131,10 @@ if __name__ == "__main__":
         get_map_points_to_search.log_last_searched_point(logfile, ogc_fid)
         ll = {"lat": str(point_lat), "lng": str(point_lng)}
         query_results = google_places.nearby_search(lat_lng=ll, radius=rad)
-        # wrong types=["restaurant", "pharmacy","cafe", "store", "gym","hospital", "school", "bar"])
         # if I want to include popular times
-        #places_extended = add_pop_times_in_places(api_key, query_results)
+        places_extended = add_pop_times_in_places(api_key, query_results)
         # for each place gotten from google
-        for place in query_results.places:
+        for place in places_extended:
             # put a try except
             try:
                 place.get_details()
