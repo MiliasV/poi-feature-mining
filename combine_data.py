@@ -2,7 +2,8 @@ import sqlite3
 import osm_pois.get_osm_data as get_osm_data
 import foursquare_my.get_foursquare_data as fsq
 from difflib import SequenceMatcher
-import google.get_gplaces_data as get_gplaces_data
+import google.get_gplaces_from_db as get_gplaces_from_db
+import google.get_gplaces_from_api as get_gplaces_from_api
 from pyxdameraulevenshtein import damerau_levenshtein_distance, normalized_damerau_levenshtein_distance
 import fuzzy
 import Levenshtein
@@ -63,15 +64,15 @@ def get_name_similarity(osm_name, source_name):
     return similarities
 
 
-def get_similarity_score(osm_info, source_info):
+def get_osm_similarity_score(osm_info, source_info):
     num_attr = 0
     score = 0
     # Pre-processing
-    osm_name = str(osm_info["name"]).lower()
-    source_name = str(source_info["name"]).lower()
+    osm_info["name"] = str(osm_info["name"]).lower()
+    source_info["name"] = str(source_info["name"]).lower()
     # Make the alphabet latin for the Greek letters
-    osm_name_lat = get_name_in_latin_alph(osm_name)
-    source_name_lat = get_name_in_latin_alph(source_name)
+    osm_name_lat = get_name_in_latin_alph(osm_info["name"])
+    source_name_lat = get_name_in_latin_alph(source_info["name"])
 
     # compute name similarity
     sims = get_name_similarity(osm_name_lat, source_name_lat)
@@ -87,19 +88,18 @@ def get_similarity_score(osm_info, source_info):
             else:
                 score += get_ro_similarity(str(osm_info[attr]), str(source_info[attr]))
             num_attr += 1
-
     return float(score)/num_attr, num_attr, sims
 
 
 def get_matches_from_google(osm_info, rad):
-    google_places = get_gplaces_data.setup()
+    google_places, gapi_key = get_gplaces_from_api.setup()
     lat_lng = {"lat": str(osm_info["ll"][0][1]), "lng":str(osm_info["ll"][0][2])}
-    query_results = get_gplaces_data.get_places_by_ll(google_places, lat_lng, rad)
+    query_results = get_gplaces_from_api.get_places_by_ll(google_places, lat_lng, rad)
     gg_info = {}
     for place in query_results.places:
         id = place.place_id
-        gg_info[id] = get_gplaces_data.get_data_for_matching(place)
-        gg_info[id]["score"], gg_info[id]["num_attr"], gg_info[id]["sim_dict"] = get_similarity_score(osm_info, gg_info[id])
+        gg_info[id] = get_gplaces_from_api.get_data_for_matching(place)
+        gg_info[id]["score"], gg_info[id]["num_attr"], gg_info[id]["sim_dict"] = get_osm_similarity_score(osm_info, gg_info[id])
     return gg_info
 
 
@@ -110,17 +110,7 @@ def get_matches_from_foursquare(osm_info, radius):
     fsq_client = fsq.setup()
     # first filter: in that radius
     fsq_venues = fsq.get_venues_by_ll(fsq_client, ll, radius)
-    fs_info = {}
-    if not fsq_venues["venues"]:
-        #print("No venues found in radius = ", radius, " m")
-        return 0
-
-    for venue in fsq_venues["venues"]:
-        id = venue["id"]
-        fs_info[id] = fsq.get_data_for_matching(venue)
-        fs_info[id]["score"], fs_info[id]["num_attr"] , fs_info[id]["sim_dict"]= get_similarity_score(osm_info, fs_info[id])
-
-    return  fs_info
+    return fsq.get_dict_with_scored_venues(fsq_venues, get_osm_similarity_score, osm_info)
         #photos = client.venues.photos(VENUE_ID="4efe05970e01089c53e3764a", params={})
 
 
@@ -177,7 +167,7 @@ if __name__ == "__main__":
         if osm_info["name"]:
             osm_info = get_osm_data.get_data_for_matching(osm_info, c, poi_id)
             print("~ OSM : ", osm_info)
-            #show_matches("Goo", osm_info, rad)
+            show_matches("Goo", osm_info, rad)
             show_matches("FSQ", osm_info, rad)
             print("########################################################################################")
 

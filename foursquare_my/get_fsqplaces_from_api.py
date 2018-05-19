@@ -90,7 +90,7 @@ def insert_data(session, FTable, search_lat, search_lng, fsq_json, ogc_fid,
 
 if __name__ == '__main__':
     cl = setup()
-    c, rad, logfile = get_map_points_to_search.config_parameters_for_searching("fsq")
+    c, rad, logfile, errorfile = get_map_points_to_search.config_parameters_for_searching("fsq")
     last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
     # setup table and session
     # define which table (fsq table, count table)
@@ -107,8 +107,8 @@ if __name__ == '__main__':
         get_map_points_to_search.log_last_searched_point(logfile, ogc_fid)
         ll = str(point_lat) + ", " + str(point_lng)
         # define which table
-        session, FTable, CTable = pois_storing_functions.setup_db("fsq_ams_center_40",
-                                                                  "fsq_ams_center_40_count","FSQ")
+        session, FTable, CTable = pois_storing_functions.setup_db("fsq_ams_whole__clipped_40",
+                                                                  "fsq_ams_whole_clipped_40_count","FSQ")
         # specify which categories to search for!
         # food = 4d4b7105d754a06374d81259
         # arts and entertainment = 4d4b7104d754a06370d81259

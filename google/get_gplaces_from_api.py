@@ -14,6 +14,7 @@ import urllib
 # Script for finding and storing POIs from Google Places #
 ##########################################################
 
+
 def setup():
     API_KEY = google_config.api_key
     google_places = GooglePlaces(API_KEY)
@@ -115,35 +116,36 @@ def add_pop_times_in_places(api_key, query_results):
 
 if __name__ == "__main__":
     google_places, api_key = setup()
-    c, rad, logfile = get_map_points_to_search.config_parameters_for_searching("google")
+    c, rad, logfile, errorfile = get_map_points_to_search.config_parameters_for_searching("google")
     last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
     # define which table
-    session, GTable, CTable = pois_storing_functions.setup_db("google_ams_center_40_compl",
-                                                         "google_ams_center_40_count_compl", "google")
+    session, GTable, CTable = pois_storing_functions.setup_db("google_ams_whole_clipped_40",
+                                                         "google_ams_whole_clipped_count", "google")
     #define types we don't care about
     google_not_wanted_types = ["route"]
     # For each point --> search nearby in google
     for ogc_fid, point_lat, point_lng in c:
-        count_places = 0
-        count_duplicates = 0
-        print("POINT: ", ogc_fid, point_lat, point_lng)
-        # keep the id of the last searched point
-        get_map_points_to_search.log_last_searched_point(logfile, ogc_fid)
-        ll = {"lat": str(point_lat), "lng": str(point_lng)}
-        query_results = google_places.nearby_search(lat_lng=ll, radius=rad)
-        # if I want to include popular times
-        places_extended = add_pop_times_in_places(api_key, query_results)
-        # for each place gotten from google
-        for place in places_extended:
-            # put a try except
-            try:
+        try:
+            count_places = 0
+            count_duplicates = 0
+            print("POINT: ", ogc_fid, point_lat, point_lng)
+            # keep the id of the last searched point
+            get_map_points_to_search.log_last_searched_point(logfile, ogc_fid)
+            ll = {"lat": str(point_lat), "lng": str(point_lng)}
+            query_results = google_places.nearby_search(lat_lng=ll, radius=rad)
+            # if I want to include popular times
+            places_extended = add_pop_times_in_places(api_key, query_results)
+            # for each place gotten from google
+            for place in places_extended:
+                # put a try except
                 place.get_details()
-            except urllib.error.URLError:
-                while True:
-                    print("I founddd IT")
-            google_json = place.details
-            if not any(x in google_not_wanted_types for x in google_json["types"]):
-                count_places, count_duplicates = insert_data(session, GTable, point_lat,
-                                                             point_lng, google_json, ogc_fid,
-                                                             count_places, count_duplicates)
-        insert_count_data(session, CTable, ogc_fid, count_places, count_duplicates)
+                google_json = place.details
+                if not any(x in google_not_wanted_types for x in google_json["types"]):
+                    count_places, count_duplicates = insert_data(session, GTable, point_lat,
+                                                                 point_lng, google_json, ogc_fid,
+                                                                 count_places, count_duplicates)
+            insert_count_data(session, CTable, ogc_fid, count_places, count_duplicates)
+        except Exception as err:
+            with open(errorfile, "a+") as text_file:
+                print(f"ERROR \n{err}", file=text_file)
+                text_file.close()

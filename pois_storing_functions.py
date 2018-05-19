@@ -65,8 +65,28 @@ def create_google_pois_table(engine, table_name, metadata):
               Column("searchlat", Numeric),
               Column("searchlng", Numeric),
               Column("rating", String),
+              Column("poptimes", String),
               Column("geom", Geometry('Point')),
               Column("json", String))
+        metadata.create_all()
+
+
+def create_gsv_pois_table(engine, table_name, metadata):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("id", String, primary_key=True, nullable=False),
+              Column("placesid", Numeric),
+              Column("panosid", String),
+              Column("head", String),
+              Column("year", String),
+              Column("month", String),
+              Column("path", String),
+              Column("lat", Numeric),
+              Column("lng", Numeric),
+              Column("searchlat", Numeric),
+              Column("searchlng", Numeric),
+              Column("geom", Geometry('Point')))
         metadata.create_all()
 
 
