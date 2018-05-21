@@ -76,7 +76,8 @@ def create_gsv_pois_table(engine, table_name, metadata):
     if not engine.dialect.has_table(engine, table_name):
         Table(table_name, metadata,
               Column("id", String, primary_key=True, nullable=False),
-              Column("placesid", Numeric),
+              Column("pointid", Numeric),
+              Column("placesid", String),
               Column("panosid", String),
               Column("head", String),
               Column("year", String),
@@ -84,8 +85,6 @@ def create_gsv_pois_table(engine, table_name, metadata):
               Column("path", String),
               Column("lat", Numeric),
               Column("lng", Numeric),
-              Column("searchlat", Numeric),
-              Column("searchlng", Numeric),
               Column("geom", Geometry('Point')))
         metadata.create_all()
 
@@ -116,11 +115,23 @@ def setup_db(pois_table_name, count_table_name, source):
     # change it in GTable as well!
     if source == "google":
         create_google_pois_table(db, pois_table_name, metadata)
-    else:
+    elif source == "FSQ":
         create_fsq_pois_table(db, pois_table_name, metadata)
+    elif source == "gsv":
+        create_gsv_pois_table(db, pois_table_name, metadata)
+        Base.prepare(db, reflect=True)
+        STable = getattr(Base.classes, pois_table_name)
+        # create a Session
+        session = Session(db)
+        return session, STable
+
+    else:
+        print("ERROR, none of google, FSQ, or gsv given")
+        return 0
     create_count_per_poi_table(db, count_table_name,metadata)
     # reflect the tables
     Base.prepare(db, reflect=True)
+
     STable = getattr(Base.classes, pois_table_name)
     CTable = getattr(Base.classes, count_table_name)
     #data_table = Table('google_ams_centroids_40', metadata, autoload=True)

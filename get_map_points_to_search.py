@@ -31,3 +31,4 @@ def log_last_searched_point(logfile, ogc_fid):
     with open(logfile, "w") as text_file:
         print(f"Last searched point \n{ogc_fid}", file=text_file)
         text_file.close()
+

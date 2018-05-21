@@ -125,27 +125,27 @@ if __name__ == "__main__":
     google_not_wanted_types = ["route"]
     # For each point --> search nearby in google
     for ogc_fid, point_lat, point_lng in c:
-        try:
-            count_places = 0
-            count_duplicates = 0
-            print("POINT: ", ogc_fid, point_lat, point_lng)
-            # keep the id of the last searched point
-            get_map_points_to_search.log_last_searched_point(logfile, ogc_fid)
-            ll = {"lat": str(point_lat), "lng": str(point_lng)}
-            query_results = google_places.nearby_search(lat_lng=ll, radius=rad)
-            # if I want to include popular times
-            places_extended = add_pop_times_in_places(api_key, query_results)
-            # for each place gotten from google
-            for place in places_extended:
+    #try:
+        count_places = 0
+        count_duplicates = 0
+        print("POINT: ", ogc_fid, point_lat, point_lng)
+        # keep the id of the last searched point
+        get_map_points_to_search.log_last_searched_point(logfile, ogc_fid)
+        ll = {"lat": str(point_lat), "lng": str(point_lng)}
+        query_results = google_places.nearby_search(lat_lng=ll, radius=rad)
+        # if I want to include popular times
+        places_extended = add_pop_times_in_places(api_key, query_results)
+        # for each place gotten from google
+        for place in places_extended:
                 # put a try except
-                place.get_details()
-                google_json = place.details
-                if not any(x in google_not_wanted_types for x in google_json["types"]):
-                    count_places, count_duplicates = insert_data(session, GTable, point_lat,
-                                                                 point_lng, google_json, ogc_fid,
-                                                                 count_places, count_duplicates)
-            insert_count_data(session, CTable, ogc_fid, count_places, count_duplicates)
-        except Exception as err:
-            with open(errorfile, "a+") as text_file:
-                print(f"ERROR \n{err}", file=text_file)
-                text_file.close()
+            place.get_details()
+            google_json = place.details
+            if not any(x in google_not_wanted_types for x in google_json["types"]):
+                count_places, count_duplicates = insert_data(session, GTable, point_lat,
+                                                             point_lng, google_json, ogc_fid,
+                                                             count_places, count_duplicates)
+        insert_count_data(session, CTable, ogc_fid, count_places, count_duplicates)
+        # except Exception as err:
+        #     with open(errorfile, "a+") as text_file:
+        #         print(f"ERROR \n{err}", file=text_file)
+        #         text_file.close()
