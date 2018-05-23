@@ -118,7 +118,7 @@ if __name__ == '__main__':
         # food and drink shop = 4bf58dd8d48988d1f9941735
         # outdoors and recreation = 4d4b7105d754a06377d81259
         # Bank = 4bf58dd8d48988d10a951735
-        # clithing store = 4bf58dd8d48988d103951735
+        # clοthing store = 4bf58dd8d48988d103951735
         # drugstore = 5745c2e4498e11e7bccabdbd
         # Bus station = 4bf58dd8d48988d1fe931735
         # Bus stop = 52f2ab2ebcbc57f1066b8b4f
