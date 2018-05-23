@@ -59,8 +59,9 @@ def download_img(img, places_id, point_id, session, GSVTable):
                    'fov': '90', "pano": img["panoid"], "key": config.api_key}]
         # # Create a results object
         results = google_streetview.api.results(params)
-        #try:
         results.download_links(CITY_FOLDER)
+        print(results.metadata)
+        print(results.links)
         if results.metadata[0]["status"] != "ZERO_RESULTS":
             path = CITY_FOLDER + "/" + img_name
             os.rename(CITY_FOLDER + "/gsv_0.jpg", path)
@@ -81,6 +82,19 @@ def get_points_from_db(tab, last_searched):
               "WHERE rn>={last_row}".format(table=tab, last_row=last_searched))
     return c
 
+
+def get_missed_points_from_db(tab, id_list):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor()
+    c.execute("SELECT rn, id, originalpointindex, lat, lng "
+              "FROM "
+              "(SELECT row_number() OVER (ORDER BY originalpointindex NULLS LAST) AS rn,  "
+              "id, originalpointindex, lat, lng "
+              " FROM {table} ) AS rowselection "
+              "WHERE id IN {list}".format(table=tab, list=id_list))
+    return c
+
+
 if __name__ == "__main__":
     city = "ams"
     source = "gsv"
@@ -90,6 +104,11 @@ if __name__ == "__main__":
     not_inserted_file = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_whole_clipped_not_inserted.txt"
     last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
     points = get_points_from_db("google_ams_whole_clipped_40", last_searched_id)
+
+    #not_inserted_file = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_whole_clipped_not_inserted.txt"
+    with open(not_inserted_file, "r") as f:
+        lines = f.read().splitlines()
+    #points = get_missed_points_from_db("google_ams_whole_clipped_40", tuple(lines))
 
     session, GSVTable = pois_storing_functions.setup_db("gsv_ams_whole_clipped_40",
                                                          "gsv_ams_whole_clipped_count", "gsv")
