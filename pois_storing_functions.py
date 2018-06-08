@@ -89,6 +89,29 @@ def create_gsv_pois_table(engine, table_name, metadata):
         metadata.create_all()
 
 
+def create_twitter_pois_table(engine, table_name, metadata):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("id", String, primary_key=True, nullable=False),
+              Column("pointid", Numeric),
+              Column("fsqid", String),
+              Column("createdat", String),
+              Column("year", String),
+              Column("month", String),
+              Column("day", String),
+              Column("hour", String),
+              Column("lang", String),
+              Column("text", String),
+              Column("favoritecount", Numeric),
+              Column("retweetcount", Numeric),
+              Column("lat", Numeric),
+              Column("lng", Numeric),
+              Column("geom", Geometry('Point')),
+              Column("json", String))
+        metadata.create_all()
+
+
 def create_count_per_poi_table(engine, table_name, metadata):
     # if table does not exist
     if not engine.dialect.has_table(engine, table_name):
@@ -117,6 +140,13 @@ def setup_db(pois_table_name, count_table_name, source):
         create_google_pois_table(db, pois_table_name, metadata)
     elif source == "FSQ":
         create_fsq_pois_table(db, pois_table_name, metadata)
+    elif source == "twitter":
+        create_twitter_pois_table(db, pois_table_name, metadata)
+        Base.prepare(db, reflect=True)
+        TTable = getattr(Base.classes, pois_table_name)
+        # create a Session
+        session = Session(db)
+        return session, TTable
     elif source == "gsv":
         create_gsv_pois_table(db, pois_table_name, metadata)
         Base.prepare(db, reflect=True)
@@ -126,9 +156,9 @@ def setup_db(pois_table_name, count_table_name, source):
         return session, STable
 
     else:
-        print("ERROR, none of google, FSQ, or gsv given")
+        print("ERROR, none of google, FSQ, gsv or twitter given")
         return 0
-    create_count_per_poi_table(db, count_table_name,metadata)
+    create_count_per_poi_table(db, count_table_name, metadata)
     # reflect the tables
     Base.prepare(db, reflect=True)
 

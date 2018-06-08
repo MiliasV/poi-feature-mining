@@ -1,6 +1,7 @@
 import sys
 sys.path.append("..")
-import google.google_config as google_config
+import google_config
+#import google.google_config as google_config
 from googleplaces import GooglePlaces, types, lang
 import sqlite3
 import pprint
@@ -116,11 +117,11 @@ def add_pop_times_in_places(api_key, query_results):
 
 if __name__ == "__main__":
     google_places, api_key = setup()
-    c, rad, logfile, errorfile = get_map_points_to_search.config_parameters_for_searching("google")
+    c, rad, logfile, errorfile = get_map_points_to_search.config_parameters_for_searching("google", "ath")
     last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
     # define which table
-    session, GTable, CTable = pois_storing_functions.setup_db("google_ams_whole_clipped_40",
-                                                         "google_ams_whole_clipped_count", "google")
+    session, GTable, CTable = pois_storing_functions.setup_db("google_ath_whole_clipped_40",
+                                                         "google_ath_whole_clipped_count", "google")
     #define types we don't care about
     google_not_wanted_types = ["route"]
     # For each point --> search nearby in google

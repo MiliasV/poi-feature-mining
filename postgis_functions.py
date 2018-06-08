@@ -2,6 +2,18 @@ import sqlite3
 import psycopg2
 
 
+def get_points_from_db(tab, last_searched):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor()
+    c.execute("SELECT rn, id, originalpointindex, lat, lng "
+              "FROM "
+              "(SELECT row_number() OVER (ORDER BY originalpointindex NULLS LAST) AS rn,  "
+              "id, originalpointindex, lat, lng "
+              " FROM {table} ) AS rowselection "
+              "WHERE rn>={last_row}".format(table=tab, last_row=last_searched))
+    return c
+
+
 def get_attr_for_matching_from_index(c, table):
     c.execute("SELECT ST_x(geom), ST_y(geom) FROM {the_table}".format(the_table=table))
     return c.fetchall()

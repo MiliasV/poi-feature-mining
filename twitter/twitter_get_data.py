@@ -11,7 +11,7 @@ import cv2
 import os
 
 
-def save_show_img(img, show_flag, save_flag, duration):
+def show_save_img(img, show_flag, save_flag, duration):
     if show_flag:
         filename = "Amsterdam_Twitter"
         # Load an color image in grayscale
@@ -53,14 +53,16 @@ auth = tweepy.OAuthHandler(OAUTH_KEYS['consumer_key'], OAUTH_KEYS['consumer_secr
 api = tweepy.API(auth, wait_on_rate_limit=True)
 
 IMAGE_TYPES = ["jpg", "png", "webp", "gif"]
-curs_tweet = tweepy.Cursor(api.search, geocode="52.370216,4.895168,5km", include_entities=True).items()
+#curs_tweet = tweepy.Cursor(api.search, geocode="52.38634009502191,4.873498724566273,0.1km").items()#, include_entities=True).items()
+curs_tweet = tweepy.Cursor(api.search, "999584980090150912").items()#, include_entities=True).items()
 #cricTweet = tweepy.Cursor(api.search, q='Amsterdam', geocode="52.370216,4.895168,5km", include_entities=True).items(1000)
 
 pp = pprint.PrettyPrinter(indent=4)
 
 for tweet in curs_tweet:
-    #print(tweet.text)
-
+    print(tweet.text)
+    print(tweet.created_at)
+    print(tweet.geo)
     if ('media' in tweet.entities):# and (tweet._json["place"]):
         #pp.pprint(tweet._json['place'])
         #print(tweet.created_at)
@@ -69,7 +71,7 @@ for tweet in curs_tweet:
         #print("\n")
         for image in tweet.entities['media']:
             img = url_to_image(image['media_url'])
-            save_show_img(img, True, False, 2600)
+            #show_save_img(img, True, False, 2600)
 
             #     if "jpg" in image:
         #     #if any(x in image for x in IMAGE_TYPES):
