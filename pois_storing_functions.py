@@ -40,11 +40,80 @@ def create_fsq_pois_table(engine, table_name, metadata):
         metadata.create_all()
 
 
+def create_fsq_matched_pois_table(engine, table_name, metadata):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("id", String, primary_key=True, nullable=False),
+              Column("point", Numeric),
+              Column("originalpointindex", Numeric),
+              Column("name", String),
+              Column("type1", String),
+              Column("type2", String),
+              Column("type3", String),
+              Column("type4", String),
+              Column("type5", String),
+              Column("street", String),
+              Column("streetnum", String),
+              Column("checkins", Numeric),
+              Column("userscount", Numeric),
+              Column("tipcount", Numeric),
+              Column("visitscount", Numeric),
+              Column("rating", Numeric),
+              Column("price", String),
+              Column("likescount", Numeric),
+              Column("photoscount", Numeric),
+              Column("website", String),
+              Column("facebook", String),
+              Column("twitter", String),
+              Column("phone", String),
+              Column("lat", Numeric),
+              Column("lng", Numeric),
+              Column("searchlat", Numeric),
+              Column("searchlng", Numeric),
+              Column("poptimes", String),
+              Column("geom", Geometry('Point')),
+              Column("json", String))
+        metadata.create_all()
+
+
 def create_google_pois_table(engine, table_name, metadata):
     # if table does not exist
     if not engine.dialect.has_table(engine, table_name):
         Table(table_name, metadata,
               Column("id", String, primary_key=True, nullable=False),
+              Column("originalpointindex", Numeric),
+              Column("name", String),
+              Column("type1", String),
+              Column("type2", String),
+              Column("type3", String),
+              Column("type4", String),
+              Column("type5", String),
+              Column("streetlng", String),
+              Column("streetsrt", String),
+              Column("streetnumlng", String),
+              Column("streetnumsrt", String),
+              Column("website", String),
+              Column("rscount", Numeric),
+              Column("phcount", Numeric),
+              Column("phone", String),
+              Column("lat", Numeric),
+              Column("lng", Numeric),
+              Column("searchlat", Numeric),
+              Column("searchlng", Numeric),
+              Column("rating", String),
+              Column("poptimes", String),
+              Column("geom", Geometry('Point')),
+              Column("json", String))
+        metadata.create_all()
+
+
+def create_google_matched_pois_table(engine, table_name, metadata):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("id", String, primary_key=True, nullable=False),
+              Column("point", Numeric),
               Column("originalpointindex", Numeric),
               Column("name", String),
               Column("type1", String),
@@ -116,13 +185,12 @@ def create_matching_table(engine, table_name, metadata):
     # if table does not exist
     if not engine.dialect.has_table(engine, table_name):
         Table(table_name, metadata,
-              Column("id", Numeric, primary_key=True, nullable=False),
-              Column("fsqid", Numeric),
-              Column("googleid", Numeric),
+              Column("id", String, primary_key=True, nullable=False),
+              Column("fsqid", String),
+              Column("googleid", String),
               Column("reason", String)
               )
         metadata.create_all()
-
 
 
 def create_scene_features_table(engine, table_name, metadata):
@@ -198,10 +266,10 @@ def setup_db(pois_table_name, count_table_name, source):
         return session, STable  , CTable
 
     elif source == "fsq_matched":
-        create_fsq_pois_table(db, pois_table_name, metadata)
+        create_fsq_matched_pois_table(db, pois_table_name, metadata)
 
     elif source == "google_matched":
-        create_fsq_pois_table(db, pois_table_name, metadata)
+        create_google_matched_pois_table(db, pois_table_name, metadata)
 
     elif source == "twitter":
         create_twitter_pois_table(db, pois_table_name, metadata)
