@@ -43,25 +43,19 @@ def get_row_from_index(c, table, index):
     return c.fetchall()
 
 
-def get_pois_for_matching(tab, last_searched):
+def get_pois_for_matching(tab, opi):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("SELECT rn, id, originalpointindex, name, type1, type2, type3, type4, "
-              "website, street, streetnum, phone, lat, lng "
-              "FROM "
-              "(SELECT row_number() OVER (ORDER BY originalpointindex NULLS LAST) AS rn,  "
-              "id, originalpointindex, lat, lng, name, type1, type2, type3, type4, "
-              "website, streetnum, street, phone  "
-              " FROM {table} ) AS rowselection "
-              "WHERE rn>={last_row}".format(table=tab, last_row=last_searched))
+    c.execute("SELECT * FROM "
+              "(SELECT * FROM   {table} ORDER BY originalpointindex) AS ordered "
+              "WHERE originalpointindex>={opi}".format(table=tab, opi=opi))
     return c
 
 
 def get_matching_attr_from_pois_within_radius(table, lng, lat, rad):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("SELECT id, name, type1, type2, type3, type4, lat, lng, "
-              "website, streetlng, streetnumlng, phone "
+    c.execute("SELECT * "
               "FROM {geotable} "
               "WHERE ST_DWithin(geom::geography, ST_MakePoint({lat},{lng})::geography,{rad})"
               "ORDER BY originalpointindex"
