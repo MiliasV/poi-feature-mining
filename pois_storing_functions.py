@@ -239,6 +239,42 @@ def create_count_per_poi_table(engine, table_name, metadata):
         metadata.create_all()
 
 
+def create_similarities_table(engine, table_name, metadata):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("id", String, primary_key=True, nullable=False),
+              Column("match", Numeric),
+              Column("namerosimilarity", Numeric),
+              Column("namedlevensimilarity", Numeric),
+              Column("namelevensimilarity", Numeric),
+              Column("namephoneticsimilarity", Numeric),
+              Column("namelenlongsubstring", Numeric),
+              Column("websiterosimilarity", Numeric),
+              Column("websitedlevensimilarity", Numeric),
+              Column("websitelevensimilarity", Numeric),
+              Column("websitephoneticsimilarity", Numeric),
+              Column("websitelenlongsubstring", Numeric),
+              Column("phonerosimilarity", Numeric),
+              Column("phonedlevensimilarity", Numeric),
+              Column("phonelevensimilarity", Numeric),
+              Column("phonephoneticsimilarity", Numeric),
+              Column("phonelenlongsubstring", Numeric),
+              Column("streetrosimilarity", Numeric),
+              Column("streetdlevensimilarity", Numeric),
+              Column("streetlevensimilarity", Numeric),
+              Column("streetphoneticsimilarity", Numeric),
+              Column("streetlenlongsubstring", Numeric),
+              Column("streetnumrosimilarity", Numeric),
+              Column("streetnumdlevensimilarity", Numeric),
+              Column("streetnumlevensimilarity", Numeric),
+              Column("streetnumphoneticsimilarity", Numeric),
+              Column("streetnumlenlongsubstring", Numeric)
+              )
+        metadata.create_all()
+
+
+
 class ALTable(object):
     pass
 
@@ -292,6 +328,8 @@ def setup_db(pois_table_name, count_table_name, source):
         # # create a Session
         # session = Session(db)
         # return session, STable
+    elif source == "similarities":
+        create_similarities_table(db, pois_table_name, metadata)
     else:
         print("ERROR, none of google, FSQ, gsv or twitter given")
         return 0
