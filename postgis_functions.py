@@ -16,16 +16,33 @@ def get_points_from_db(tab, last_searched):
     c = conn.cursor()
     c.execute("SELECT rn, id, originalpointindex, lat, lng "
               "FROM "
-              "(SELECT row_number() OVER (ORDER BY originalpointindex NULLS LAST) AS rn,  "
+              "(SELECT row_number() OVER (ORDER BY originalpointindex NULLS LAST) AS rn, "
               "id, originalpointindex, lat, lng "
               " FROM {table} ) AS rowselection "
               "WHERE rn>={last_row}".format(table=tab, last_row=last_searched))
     return c
 
-#
-# def get_attr_for_matching_from_index(c, table):
-#     c.execute("SELECT ST_x(geom), ST_y(geom) FROM {the_table}".format(the_table=table))
-#     return c.fetchall()
+
+def get_pois_from_db(tab, last_searched):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * "
+              "FROM "
+              "(SELECT row_number() OVER (ORDER BY originalpointindex NULLS LAST) AS rn, "
+              "{table}.* "
+              " FROM {table} ) AS rowselection "
+              "WHERE rn>={last_row}".format(table=tab, last_row=last_searched))
+    return c
+
+
+def get_photos_from_db(table, last_inserted):
+    conn = psycopg2.connect("dbname='pois' user='postgres' host='localhost' password='postgres'")
+    imgs = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+    imgs.execute("SELECT * FROM"
+                 "(SELECT row_number() OVER (ORDER BY placesid) AS rn, id, placesid, head, panosid, year, month, lat, lng, geom, path  "
+                 "FROM {tab} ) As rowselection "
+                 "WHERE rn>={last_row}".format(tab=table, last_row=last_inserted))
+    return imgs
 
 
 def get_ll_from_geom(c, table):

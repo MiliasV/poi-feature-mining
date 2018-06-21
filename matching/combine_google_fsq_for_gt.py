@@ -9,7 +9,9 @@ from nltk.corpus import wordnet
 from transliterate import translit
 import pois_storing_functions
 from urllib.parse import urlparse
-
+import combine_google_fsq_with_model
+import create_similarities_table
+import pandas as pd
 errcount = 0
 
 # Match Google & Foursquare POIs for creating ground truth
@@ -158,19 +160,52 @@ def add_matched_to_db(session, FTable, GTable, MTable, fpoint, gpoint, reason):
         session.rollback()
 
 
+def model_predictions(clf, prev_predict_prob, fpoint, gpoint):
+    sim_dict = create_similarities_table.get_similarities_dict(fpoint, gpoint)
+    sim_df = pd.DataFrame.from_dict([sim_dict])
+    sim_df = sim_df.fillna(-1)
+    fmatched = {}
+    gmatched = {}
+    if clf.predict_proba(sim_df)[0][1] > 0.8:
+        print(clf.predict_proba(sim_df))
+        predict_prob = clf.predict_proba(sim_df)[0][1]
+        # if previous match had larger probability don't change match
+        if prev_predict_prob > predict_prob:
+            print("~~~ Already matched!!!")
+            print(fpoint)
+            print(gpoint)
+            # count_conflicts+=1
+        else:
+            print("~~ Matched")
+            prev_predict_prob = predict_prob
+            fmatched, gmatched = fpoint.copy(), gpoint.copy()
+            print(fpoint)
+            print(gpoint)
+    return prev_predict_prob, fmatched, gmatched
+
+
+def print_matched_count(countaddr, countphone, countnamestreet, countwebstreet, countwebname, countnamedist):
+    print("#################################################################################")
+    print("COUNT (addr): ", countaddr)
+    print("COUNT (Phone): ", countphone)
+    print("COUNT (Namestreet): ", countnamestreet)
+    print("COUNT (webstreet): ", countwebstreet)
+    print("COUNT (webname): ", countwebname)
+    print("COUNT (namedist): ", countnamedist)
+    #print("TOTAL: ", count)#countaddr +countphone +countnamestreet + countwebstreet + countwebname + countnamedist)
+    print("@@@@@@@@@@@@@@@@@@@@@")
+
+
 if __name__ == "__main__":
     # choose radius
     #for rad in [275]:
-    # a = "Wildkamperen"
-    # print(get_str_similarity(a, "MELEDI Amsterdam"))
-    # print(b)
     fpoints = postgis_functions.get_pois_for_matching("fsq_ams_places", 0)
     # Create matched tables
-    session, FTable = pois_storing_functions.setup_db("axp_fsq_ams_matched_table", "", "fsq_matched")
+    session, FTable = pois_storing_functions.setup_db("gt_fsq_ams_matched", "", "fsq_matched")
     session.close()
-    session, GTable = pois_storing_functions.setup_db("axp_google_ams_matched_table", "", "google_matched")
+    session, GTable = pois_storing_functions.setup_db("gt_google_ams_matched", "", "google_matched")
     session.close()
-    session, MTable = pois_storing_functions.setup_db("axp_matching_google_fsq_ams_table", "", "matching_table")
+    session, MTable = pois_storing_functions.setup_db("gt_matching_google_fsq_ams", "", "matching_table")
     rad = 300
     ###############
     # FOR EACH POI#
@@ -185,31 +220,30 @@ if __name__ == "__main__":
     matching_score = 0
     count = 0
     thres = 7
+    count_conflicts=0
+    #clf = combine_google_fsq_with_model.get_trained_model("similarities_ams_table")
     for fpoint in fpoints:
+        #prev_predict_prob = 0
         score = 0
-        # if count==:
-        #     print(fpoint["originalpointindex"])
-        #     break
-        print("#################################################################################")
-        print("POINT: ", point)
-        print("COUNT (addr): ", countaddr)
-        print("COUNT (Phone): ", countphone)
-        print("COUNT (Namestreet): ", countnamestreet)
-        print("COUNT (webstreet): ", countwebstreet)
-        print("COUNT (webname): ", countwebname)
-        print("COUNT (namedist): ", countnamedist)
-        print("TOTAL: ", count)#countaddr +countphone +countnamestreet + countwebstreet + countwebname + countnamedist)
-        print("@@@@@@@@@@@@@@@@@@@@@")
+        # if point>253:
+        # #     print(fpoint["originalpointindex"])
+        #      break
+        print("POINT ", point)
+        print("COUNT ", count)
+        print("Conflicts ", count_conflicts)
+
         point+=1
         # Gather places within radius
         google_closest_points = postgis_functions.get_matching_attr_from_pois_within_radius\
              ("google_ams_whole_clipped_40", fpoint["lat"], fpoint["lng"], rad)
         for gpoint in google_closest_points:
-            # if match_by_website(fpoint, gpoint, 0.8) and match_by_name(fpoint, gpoint, 0.6):
-            #     if score< 2:
-            #         fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "web_name",  2
-            #         countwebname+=1
-            # match by website and street
+            # model_predictions(clf, prev_predict_prob, fpoint, gpoint)
+            # if prev_predict_prob > 0.8:
+            #     print("ADDED TO DB")
+            #     count += 1
+            #     fmatched["point"] = point
+            #     gmatched["point"] = point
+            #     add_matched_to_db(session, FTable, GTable, MTable, fmatched, gmatched, "model-0.9")
             if match_by_website(fpoint, gpoint, 0.8) and match_by_street(fpoint, gpoint, 0.8):
                 if score< 3:
                     fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "web_street",  3
@@ -220,6 +254,7 @@ if __name__ == "__main__":
                     fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "phone_name", 6
                     countphone += 1
             # match by addr total and name 0.3
+            # Remove!!!
             if match_by_addr(fpoint, gpoint) and match_by_name(fpoint, gpoint, 0.7):
                 if score < 5:
                     fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "addr_name",  7
@@ -238,7 +273,6 @@ if __name__ == "__main__":
             fmatched["point"] = point
             gmatched["point"] = point
             add_matched_to_db(session, FTable, GTable, MTable, fmatched, gmatched, reason)
-
     print("RAD = ", rad)
     print("Total Points Matched = ", count , " / ", point) # countnamestreet + countwebstreet + countphone + countaddr + countwebname + countnamedist)
-    print("ERRORS: ", errcount)
+    print("ERRORS: ", count_conflicts)
