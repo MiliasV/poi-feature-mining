@@ -186,6 +186,7 @@ def create_matching_table(engine, table_name, metadata):
     if not engine.dialect.has_table(engine, table_name):
         Table(table_name, metadata,
               Column("id", String, primary_key=True, nullable=False),
+              Column("point", String),
               Column("fsqid", String),
               Column("googleid", String),
               Column("reason", String)
@@ -198,6 +199,7 @@ def create_scene_features_table(engine, table_name, metadata):
     if not engine.dialect.has_table(engine, table_name):
         Table(table_name, metadata,
               Column("id", String, primary_key=True, nullable=False),
+              Column("point", String),
               Column("placesid", String),
               Column("panosid", String),
               Column("head", String),
