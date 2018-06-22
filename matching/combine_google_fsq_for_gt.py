@@ -140,7 +140,7 @@ def print_matched(fpoint, gpoint, attr):
 
 def add_matched_to_db(session, FTable, GTable, MTable, fpoint, gpoint, reason):
     match = {"id": fpoint["id"] + "_" + gpoint["id"], "fsqid": fpoint["id"],
-             "googleid": gpoint["id"], "reason": reason}
+             "googleid": gpoint["id"], "reason": reason, "point": fpoint["point"]}
     global errcount
     try:
         session.add(FTable(**fpoint))
@@ -201,11 +201,11 @@ if __name__ == "__main__":
     #for rad in [275]:
     fpoints = postgis_functions.get_pois_for_matching("fsq_ams_places", 0)
     # Create matched tables
-    session, FTable = pois_storing_functions.setup_db("gt_fsq_ams_matched", "", "fsq_matched")
+    session, FTable = pois_storing_functions.setup_db("matched_fsq_ams", "", "fsq_matched")
     session.close()
-    session, GTable = pois_storing_functions.setup_db("gt_google_ams_matched", "", "google_matched")
+    session, GTable = pois_storing_functions.setup_db("matched_google_ams", "", "google_matched")
     session.close()
-    session, MTable = pois_storing_functions.setup_db("gt_matching_google_fsq_ams", "", "matching_table")
+    session, MTable = pois_storing_functions.setup_db("matched_google_fsq_ams", "", "matching_table")
     rad = 300
     ###############
     # FOR EACH POI#
@@ -223,6 +223,7 @@ if __name__ == "__main__":
     count_conflicts=0
     #clf = combine_google_fsq_with_model.get_trained_model("similarities_ams_table")
     for fpoint in fpoints:
+        print_matched_count(countaddr, countphone, countnamestreet, countwebstreet, countwebname, countnamedist)
         #prev_predict_prob = 0
         score = 0
         # if point>253:
@@ -265,7 +266,7 @@ if __name__ == "__main__":
                     fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "street_name",  7
                     countnamestreet+=1
             if match_by_name(fpoint, gpoint, 0.7) and postgis_functions.get_distance(fpoint, gpoint)<=40:
-                if score < 7:
+                if score < 8:
                     fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "dist_name",  8
                     countnamedist+=1
         if score > 0:
