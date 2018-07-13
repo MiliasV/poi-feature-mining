@@ -1,6 +1,23 @@
+# coding=utf-8
+
 import sqlite3
 import psycopg2
 import psycopg2.extras
+
+
+def get_tweets_from_fsqid(tab, fsqid):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * from {table} "
+              "WHERE fsqid = '{fid}'".format(table=tab, fid=fsqid))
+    return c
+
+
+def get_rows_from_table(tab):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * from {table}".format(table=tab))
+    return c
 
 
 def get_distance(fpoint, gpoint):
@@ -23,26 +40,72 @@ def get_points_from_db(tab, last_searched):
     return c
 
 
-def get_pois_from_db(tab, last_searched):
+def get_pois_from_fsq_db(tab, last_searched):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
     c.execute("SELECT * "
-              "FROM "
-              "(SELECT row_number() OVER (ORDER BY originalpointindex NULLS LAST) AS rn, "
-              "{table}.* "
-              " FROM {table} ) AS rowselection "
-              "WHERE rn>={last_row}".format(table=tab, last_row=last_searched))
+              "FROM  {table} "
+              "WHERE point>={last_point} "
+              "ORDER BY point".format(table=tab, last_point=last_searched))
     return c
 
 
 def get_photos_from_db(table, last_inserted):
     conn = psycopg2.connect("dbname='pois' user='postgres' host='localhost' password='postgres'")
     imgs = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
-    imgs.execute("SELECT * FROM"
-                 "(SELECT row_number() OVER (ORDER BY placesid) AS rn, id, placesid, head, panosid, year, month, lat, lng, geom, path  "
-                 "FROM {tab} ) As rowselection "
-                 "WHERE rn>={last_row}".format(tab=table, last_row=last_inserted))
+    imgs.execute("SELECT  id, point, placesid, head, panosid, year, month, lat, lng, geom, path  "
+                 "FROM {tab} "
+                 "WHERE point>={last_point} "
+                 "ORDER BY point".format(tab=table, last_point=last_inserted))
     return imgs
+
+
+def get_matchid_by_id(table, pid):
+    conn = psycopg2.connect("dbname='pois' user='postgres' host='localhost' password='postgres'")
+    poi = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+    poi.execute("SELECT * FROM {tab} "
+                 "WHERE id='{placeid}'".format(tab=table, placeid=pid))
+    poi = poi.fetchall()[0]
+    return poi["point"]
+
+
+def get_matched_poi(table, point):
+    conn = psycopg2.connect("dbname='pois' user='postgres' host='localhost' password='postgres'")
+    poi = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+    poi.execute("SELECT * FROM {tab} "
+                 "WHERE point='{point}'".format(tab=table, point=point))
+    poi = poi.fetchall()[0]
+    res = {k: v if v is not None else "" for k, v in poi.items()}
+    return res
+
+
+def get_type_of_place(place_dict):
+    if ("Bar" in place_dict["type1"] or "Bar" in place_dict["type2"]):
+        return "bar"
+    elif "Restaurant" in place_dict["type1"]:
+        return "restaurant"
+    elif ("Café" in place_dict["type1"] or "Cafe" in place_dict["type1"] or
+          "Café" in place_dict["type2"] or "Cafe" in place_dict["type2"]):
+        return "cafe"
+    elif "Art Gallery" in place_dict["type1"]:
+        return "Art Gallery"
+    elif ("Hotel" in place_dict["type1"] or "Hotel" in place_dict["type2"]):
+        return "hotel"
+    elif ("Coffee Shop" in place_dict["type1"]):
+        return "coffee shop"
+    elif (("Food" in place_dict["type2"] or "Food" in place_dict["type3"]) and
+          ("Shop" in place_dict["type1"] or "Store" in place_dict["type1"] or
+           "Shop" in place_dict["type2"] or "Store" in place_dict["type2"])):
+        return "food_drink_shop"
+    elif "Nightclub" in place_dict["type1"]:
+        return "nightclub"
+    elif "Stripclub" in place_dict["type1"]:
+        return "Stripclub"
+    elif ("College & University" in place_dict["type2"] or
+        "College & University" in place_dict["type3"]):
+        return "college_and_university"
+    else:
+        return False
 
 
 def get_ll_from_geom(c, table):
