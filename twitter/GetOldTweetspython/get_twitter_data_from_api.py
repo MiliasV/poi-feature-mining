@@ -1,12 +1,17 @@
 import sys
 sys.path.append("..")
 sys.path.append("../..")
+sys.path.append("../../textual_features/")
 import twitter_config
 import pprint
 import postgis_functions
 import pois_storing_functions
 import tweepy
 import json
+import psycopg2
+import textual_features_extraction
+
+
 if sys.version_info[0] < 3:
     import got
 else:
@@ -26,9 +31,6 @@ def setup_api():
     return api
 
 
-# def get_fsq_points(c):
-
-
 def get_tweets_from_loc_since_until_radius(l, since, until, rad):
     tweetCriteria = got.manager.TweetCriteria()\
         .setNear(l)\
@@ -37,6 +39,7 @@ def get_tweets_from_loc_since_until_radius(l, since, until, rad):
         .setUntil(until)\
         .setMaxTweets(0)
     tweets = got.manager.TweetManager.getTweets(tweetCriteria)
+    #, proxy='74.209.243.116:3128'
     return tweets
 # bebop google 52.010858,4.359553
 
@@ -51,7 +54,7 @@ def insert_tweet_to_db(point_id, places_id, tweet, session, TTable):
     res["month"] = tweet.created_at.month
     res["day"] = tweet.created_at.day
     res["hour"] = tweet.created_at.hour
-    res["lang"] = tweet.lang
+    res["lang"] = textual_features_extraction.get_text_language(tweet.text)
     res["text"] = tweet.text
     res["favoritecount"] = tweet.favorite_count
     res["retweetcount"] = tweet.retweet_count
@@ -61,6 +64,7 @@ def insert_tweet_to_db(point_id, places_id, tweet, session, TTable):
         res["geom"] = 'POINT({} {})'.format(res["lng"], res["lat"])
     else:
         res["lat"], res["lng"], res["geom"] = None, None, None
+    res["lang"] = tweet._json["lang"]
     res["json"] = json.dumps(tweet._json)
     try:
         session.add(TTable(**res))
@@ -78,37 +82,52 @@ def log_last_searched_point(logfile, originalpointindex):
         text_file.close()
 
 
+def get_fsq_points_less_tweets_than(num):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT  * from matched_fsq_ams "
+              "WHERE "
+              "id  in "
+              "(SELECT fsqid from matched_twitter_ams "
+              "GROUP BY fsqid "
+              "having COUNT(*)<{n}) "
+              "OR "
+              "id NOT IN (SELECT fsqid from matched_twitter_ams)".format(n=num))
+    return c
+
+
 if __name__ == '__main__':
     api = setup_api()
     city = "ams"
     source = "twitter"
     count=0
-    logfile = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_places_point_iterations.txt"
-    #not_inserted_file = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_whole_clipped_not_inserted.txt"
+    logfile = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_matched.txt"
     while count<1:
         try:
             last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
             #print(last_searched_id)
-            points = postgis_functions.get_pois_from_db("gt_fsq_ams_matched", last_searched_id)
-            session, TTable = pois_storing_functions.setup_db("twitter_ams_places",
+            #points = postgis_functions.get_pois_from_fsq_db("matched_fsq_ams", last_searched_id)
+            points = get_fsq_points_less_tweets_than(5)
+            session, TTable = pois_storing_functions.setup_db("matched_twitter_ams",
                                                                 "twitter_ams_places_count", "twitter")
             rad = "0.05km"
             since = "2016-01-01"
             until = "2018-12-19"
+            # since = "2014-01-01"
+            # until = "2016-12-30"
             for fsq in points:
-                print(fsq["rn"])
-                log_last_searched_point(logfile, fsq["rn"])
-                print("POINT: ", fsq["rn"], fsq["id"], fsq["lat"], fsq["lng"])
+                log_last_searched_point(logfile, fsq["point"])
+                print("POINT: ", fsq["pointsemantic similarity english and dutch"], fsq["id"], fsq["lat"], fsq["lng"])
                 ll = str(fsq["lat"]) + "," + str(fsq["lng"])
                 tweets = get_tweets_from_loc_since_until_radius(ll, since, until, rad)
-                print("ok")
+                print(tweets)
+                print("Got tweets")
+                if len(tweets)>50:
+                    tweets = tweets[0:50]
+                print(len(tweets))
                 for tweet in tweets:
-                    # print(dir(tweet))
-                    # print(tweet.geo)
-                    # print(tweet.hashtags)
-                    # print(tweet.date)
                     tweet_by_id = api.get_status(tweet.id)
-                    insert_tweet_to_db(fsq["rn"], fsq["id"], api.get_status(tweet.id), session, TTable)
+                    insert_tweet_to_db(fsq["point"], fsq["id"], api.get_status(tweet.id), session, TTable)
         except Exception as err:
             count+=1
             print(count)
