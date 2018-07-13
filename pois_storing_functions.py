@@ -165,6 +165,7 @@ def create_twitter_pois_table(engine, table_name, metadata):
               Column("id", String, primary_key=True, nullable=False),
               Column("pointid", Numeric),
               Column("fsqid", String),
+              Column("lang", String),
               Column("createdat", String),
               Column("year", String),
               Column("month", String),
@@ -200,6 +201,7 @@ def create_scene_features_table(engine, table_name, metadata):
         Table(table_name, metadata,
               Column("id", String, primary_key=True, nullable=False),
               Column("point", String),
+              Column("type", String),
               Column("placesid", String),
               Column("panosid", String),
               Column("head", String),
@@ -221,6 +223,146 @@ def create_scene_features_table(engine, table_name, metadata):
               Column("sceneattr7", String),
               Column("sceneattr8", String),
               Column("sceneattr9", String),
+              Column("year", Numeric),
+              Column("month", Numeric),
+              Column("path", String),
+              Column("lat", Numeric),
+              Column("lng", Numeric),
+              Column("geom", Geometry('Point')))
+        metadata.create_all()
+
+
+def create_object_detection_coco_table(engine, table_name, metadata):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("id", String, primary_key=True, nullable=False),
+              Column("point", String),
+              Column("placesid", String),
+              Column("type", String),
+              Column("panosid", String),
+              Column("head", String),
+              Column("person", Numeric),
+              Column("personcount", Numeric),
+              Column("personhighestprob", Numeric),
+              Column("bicycle", Numeric),
+              Column("bicyclecount", Numeric),
+              Column("bicyclehighestprob", Numeric),
+              Column("car", Numeric),
+              Column("carcount", Numeric),
+              Column("carhighestprob", Numeric),
+              Column("motorcycle", Numeric),
+              Column("motorcyclecount", Numeric),
+              Column("motorcyclehighestprob", Numeric),
+              Column("bus", Numeric),
+              Column("buscount", Numeric),
+              Column("bushighestprob", Numeric),
+              Column("train", Numeric),
+              Column("traincount", Numeric),
+              Column("trainhighestprob", Numeric),
+              Column("truck", Numeric),
+              Column("truckcount", Numeric),
+              Column("truckhighestprob", Numeric),
+              Column("boat", Numeric),
+              Column("boatcount", Numeric),
+              Column("boathighestprob", Numeric),
+              Column("trafficlight", Numeric),
+              Column("trafficlightcount", Numeric),
+              Column("trafficlighthighestprob", Numeric),
+              Column("firehydrant", Numeric),
+              Column("firehydrantcount", Numeric),
+              Column("firehydranthighestprob", Numeric),
+              Column("stopsign", Numeric),
+              Column("stopsigncount", Numeric),
+              Column("stopsignhighestprob", Numeric),
+              Column("bench", Numeric),
+              Column("benchcount", Numeric),
+              Column("benchhighestprob", Numeric),
+              Column("pottedplant", Numeric),
+              Column("pottedplantcount", Numeric),
+              Column("pottedplanthighestprob", Numeric),
+              Column("year", Numeric),
+              Column("month", Numeric),
+              Column("path", String),
+              Column("lat", Numeric),
+              Column("lng", Numeric),
+              Column("geom", Geometry('Point')))
+        metadata.create_all()
+
+
+def create_object_detection_oid_table(engine, table_name, metadata):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("id", String, primary_key=True, nullable=False),
+              Column("point", String),
+              Column("placesid", String),
+              Column("type", String),
+              Column("panosid", String),
+              Column("head", String),
+              Column("person", Numeric),
+              Column("personcount", Numeric),
+              Column("personhighestprob", Numeric),
+              Column("clothing", Numeric),
+              Column("clothingcount", Numeric),
+              Column("clothinghighestprob", Numeric),
+              Column("man", Numeric),
+              Column("mancount", Numeric),
+              Column("manhighestprob", Numeric),
+              Column("woman", Numeric),
+              Column("womancount", Numeric),
+              Column("womanhighestprob", Numeric),
+              Column("tree", Numeric),
+              Column("treecount", Numeric),
+              Column("treehighestprob", Numeric),
+              Column("houseplant", Numeric),
+              Column("houseplantcount", Numeric),
+              Column("houseplanthighestprob", Numeric),
+              Column("flower", Numeric),
+              Column("flowercount", Numeric),
+              Column("flowerhighestprob", Numeric),
+              Column("building", Numeric),
+              Column("buildingcount", Numeric),
+              Column("buildinghighestprob", Numeric),
+              Column("skyscraper", Numeric),
+              Column("skyscrapercount", Numeric),
+              Column("skyscraperhighestprob", Numeric),
+              Column("house", Numeric),
+              Column("housecount", Numeric),
+              Column("househighestprob", Numeric),
+              Column("conveniencestore", Numeric),
+              Column("conveniencestorecount", Numeric),
+              Column("conveniencestorehighestprob", Numeric),
+              Column("office", Numeric),
+              Column("officecount", Numeric),
+              Column("officehighestprob", Numeric),
+              Column("streetlight", Numeric),
+              Column("streetlightcount", Numeric),
+              Column("streetlighthighestprob", Numeric),
+              Column("trafficlight", Numeric),
+              Column("trafficlightcount", Numeric),
+              Column("trafficlighthighestprob", Numeric),
+              Column("trafficsign", Numeric),
+              Column("trafficsigncount", Numeric),
+              Column("trafficsignhighestprob", Numeric),
+              Column("tent", Numeric),
+              Column("tentcount", Numeric),
+              Column("tenthighestprob", Numeric),
+              Column("vehicle", Numeric),
+              Column("vehiclecount", Numeric),
+              Column("vehiclehighestprob", Numeric),
+              Column("landvehicle", Numeric),
+              Column("landvehiclecount", Numeric),
+              Column("landvehiclehighestprob", Numeric),
+              Column("car", Numeric),
+              Column("carcount", Numeric),
+              Column("carhighestprob", Numeric),
+              Column("bike", Numeric),
+              Column("bikecount", Numeric),
+              Column("bikehighestprob", Numeric),
+              Column("boat", Numeric),
+              Column("boatcount", Numeric),
+              Column("boathighestprob", Numeric),
               Column("year", Numeric),
               Column("month", Numeric),
               Column("path", String),
@@ -274,7 +416,6 @@ def create_similarities_table(engine, table_name, metadata):
               Column("streetnumlenlongsubstring", Numeric)
               )
         metadata.create_all()
-
 
 
 class ALTable(object):
@@ -332,6 +473,11 @@ def setup_db(pois_table_name, count_table_name, source):
         # return session, STable
     elif source == "similarities":
         create_similarities_table(db, pois_table_name, metadata)
+    elif source == "od_coco":
+        create_object_detection_coco_table(db, pois_table_name, metadata)
+    elif source == "od_oid":
+        create_object_detection_oid_table(db, pois_table_name, metadata)
+
     else:
         print("ERROR, none of google, FSQ, gsv or twitter given")
         return 0
