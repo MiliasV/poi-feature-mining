@@ -2,14 +2,15 @@ import sys
 sys.path.append("..")
 sys.path.append("../..")
 sys.path.append("../../textual_features/")
-import twitter_config
+print(sys.path)
+import twitter.twitter_config as twitter_config
 import pprint
 import postgis_functions
 import pois_storing_functions
 import tweepy
 import json
 import psycopg2
-import textual_features_extraction
+import textual_features.textual_features_extraction as textual_features_extraction
 
 
 if sys.version_info[0] < 3:
@@ -64,7 +65,7 @@ def insert_tweet_to_db(point_id, places_id, tweet, session, TTable):
         res["geom"] = 'POINT({} {})'.format(res["lng"], res["lat"])
     else:
         res["lat"], res["lng"], res["geom"] = None, None, None
-    res["lang"] = tweet._json["lang"]
+    #res["lang"] = tweet._json["lang"]
     res["json"] = json.dumps(tweet._json)
     try:
         session.add(TTable(**res))
@@ -117,7 +118,7 @@ if __name__ == '__main__':
             # until = "2016-12-30"
             for fsq in points:
                 log_last_searched_point(logfile, fsq["point"])
-                print("POINT: ", fsq["pointsemantic similarity english and dutch"], fsq["id"], fsq["lat"], fsq["lng"])
+                print("POINT: ", fsq["point"], fsq["id"], fsq["lat"], fsq["lng"])
                 ll = str(fsq["lat"]) + "," + str(fsq["lng"])
                 tweets = get_tweets_from_loc_since_until_radius(ll, since, until, rad)
                 print(tweets)
