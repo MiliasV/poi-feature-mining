@@ -10,6 +10,7 @@ import simplejson as json
 import sqlite3
 import logging_functions
 
+
 def setup():
     CLIENT_ID = fsq_config.cl_id
     CLIENT_SECRET = fsq_config.cl_sec
