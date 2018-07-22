@@ -5,6 +5,59 @@ import psycopg2
 import psycopg2.extras
 
 
+def add_type_to_table(tab, colid, value, fid):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("UPDATE {table} "
+              "SET type='{v}' "
+              "WHERE {col} ='{fid}'".format(table=tab, col=colid, v=value, fid=fid))
+    conn.commit()
+
+
+def get_text_from_tweets(table):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT text from {table} ".format(table=table))
+    return c.fetchall()
+
+
+def add_processed_text_to_table(data, col, table, tweetid):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    print("UPDATING...")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("UPDATE {tab} "
+              "SET {col}='{v}' "
+              "WHERE id ='{tid}'".format(tab=table, col=col, v=data, tid=tweetid))
+    conn.commit()
+
+
+def get_tweets_per_lang_from_fsqid(tab, fsqid, lang):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * from {table} "
+              "WHERE fsqid = '{fid}'"
+              "AND lang = '{lang}'".format(table=tab, lang=lang, fid=fsqid))
+    return c
+
+
+def update_tweets_language(table, data, tweetid):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    print("UPDATING...")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("UPDATE {tab} "
+              "SET lang='{v}' "
+              "WHERE id ='{tid}'".format(tab=table, v=data, tid=tweetid))
+    conn.commit()
+
+def get_tweets_lda_text_per_lang_from_fsqid(tab, fsqid, lang):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT processedtextlda from {table} "
+              "WHERE fsqid = '{fid}'"
+              "AND lang = '{lang}'".format(table=tab, lang=lang, fid=fsqid))
+    return c.fetchall()
+
+
 def get_tweets_from_fsqid(tab, fsqid):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -13,11 +66,29 @@ def get_tweets_from_fsqid(tab, fsqid):
     return c
 
 
+def get_rows_from_table_where_col_is_null(tab, col):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * from {table} "
+              "WHERE {col} is null".format(table=tab, col=col))
+    return c.fetchall()
+
+
 def get_rows_from_table(tab):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("SELECT * from {table}".format(table=tab))
-    return c
+    c.execute("SELECT * from {table} ".format(table=tab))
+    return c.fetchall()
+
+
+def get_row_by_id(tab, getid):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * from {table} "
+              "WHERE id='{getid}'".format(table=tab, getid=getid))
+    poi = c.fetchall()[0]
+    res = {k: v if v is not None else "" for k, v in poi.items()}
+    return res
 
 
 def get_distance(fpoint, gpoint):
