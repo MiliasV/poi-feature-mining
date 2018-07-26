@@ -142,6 +142,11 @@ def add_matched_to_db(session, FTable, GTable, MTable, fpoint, gpoint, reason):
     match = {"id": fpoint["id"] + "_" + gpoint["id"], "fsqid": fpoint["id"],
              "googleid": gpoint["id"], "reason": reason, "point": fpoint["point"]}
     global errcount
+    fpoint_for_type = {k: v if v is not None else "" for k, v in fpoint.items()}
+
+    type = postgis_functions.get_type_of_place(fpoint_for_type)
+    fpoint["type"] = type
+    gpoint["type"] = type
     try:
         session.add(FTable(**fpoint))
         session.add(GTable(**gpoint))
@@ -201,11 +206,11 @@ if __name__ == "__main__":
     #for rad in [275]:
     fpoints = postgis_functions.get_pois_for_matching("fsq_ams_places", 0)
     # Create matched tables
-    session, FTable = pois_storing_functions.setup_db("matched_fsq_ams", "", "fsq_matched")
+    session, FTable = pois_storing_functions.setup_db("matched_fsq_ams2", "", "fsq_matched")
     session.close()
-    session, GTable = pois_storing_functions.setup_db("matched_google_ams", "", "google_matched")
+    session, GTable = pois_storing_functions.setup_db("matched_google_ams2", "", "google_matched")
     session.close()
-    session, MTable = pois_storing_functions.setup_db("matched_google_fsq_ams", "", "matching_table")
+    session, MTable = pois_storing_functions.setup_db("matched_google_fsq_ams2", "", "matching_table")
     rad = 300
     ###############
     # FOR EACH POI#
