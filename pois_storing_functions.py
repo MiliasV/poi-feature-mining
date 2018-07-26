@@ -48,6 +48,7 @@ def create_fsq_matched_pois_table(engine, table_name, metadata):
               Column("point", Numeric),
               Column("originalpointindex", Numeric),
               Column("name", String),
+              Column("type", String),
               Column("type1", String),
               Column("type2", String),
               Column("type3", String),
@@ -116,6 +117,7 @@ def create_google_matched_pois_table(engine, table_name, metadata):
               Column("point", Numeric),
               Column("originalpointindex", Numeric),
               Column("name", String),
+              Column("type", String),
               Column("type1", String),
               Column("type2", String),
               Column("type3", String),
@@ -439,10 +441,10 @@ def setup_db(pois_table_name, count_table_name, source):
         create_fsq_pois_table(db, pois_table_name, metadata)
         Base.prepare(db, reflect=True)
         STable = getattr(Base.classes, pois_table_name)
-        CTable = getattr(Base.classes, count_table_name)
+        #CTable = getattr(Base.classes, count_table_name)
         # create a Session
         session = Session(db)
-        return session, STable  , CTable
+        return session, STable, []
 
     elif source == "fsq_matched":
         create_fsq_matched_pois_table(db, pois_table_name, metadata)

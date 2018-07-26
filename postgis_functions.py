@@ -49,6 +49,24 @@ def update_tweets_language(table, data, tweetid):
               "WHERE id ='{tid}'".format(tab=table, v=data, tid=tweetid))
     conn.commit()
 
+
+def get_tweets_text_per_lang(tab, fsqid, lang):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT text from {table} "
+              "WHERE fsqid = '{fid}'"
+              "AND lang = '{lang}'".format(table=tab, lang=lang, fid=fsqid))
+    return c.fetchall()
+
+
+def get_tweets_lda_text_per_lang(tab, lang):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT processedtextlda from {table} "
+              "WHERE lang = '{lang}'".format(table=tab, lang=lang))
+    return c.fetchall()
+
+
 def get_tweets_lda_text_per_lang_from_fsqid(tab, fsqid, lang):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -81,6 +99,24 @@ def get_rows_from_table(tab):
     return c.fetchall()
 
 
+def get_daytime_by_id(tab, getid):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT createdat from {table} "
+              "WHERE fsqid='{getid}'"
+              "ORDER BY createdat".format(table=tab, getid=getid))
+    return c.fetchall()
+
+
+def get_id_not_in_table(table_source, table_target, col):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT id from {table_s} "
+              "WHERE id NOT IN ("
+              "SELECT {id_t} from {table_t}".format(table_s=table_source, table_t=table_target, id_t=col))
+    return c.fetchall()
+
+
 def get_row_by_id(tab, getid):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -89,6 +125,7 @@ def get_row_by_id(tab, getid):
     poi = c.fetchall()[0]
     res = {k: v if v is not None else "" for k, v in poi.items()}
     return res
+
 
 
 def get_distance(fpoint, gpoint):
@@ -119,6 +156,16 @@ def get_pois_from_fsq_db(tab, last_searched):
               "WHERE point>={last_point} "
               "ORDER BY point".format(table=tab, last_point=last_searched))
     return c
+
+
+def get_photos_for_od(table_source, table_dest):
+    conn = psycopg2.connect("dbname='pois' user='postgres' host='localhost' password='postgres'")
+    imgs = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+    imgs.execute("SELECT  id, point, placesid, head, panosid, year, month, lat, lng, geom, path  "
+                 "FROM {tab_s} "
+                 "WHERE placesid not in ("
+                 "SELECT  placesid from {tab_d})".format(tab_s=table_source, tab_d=table_dest))
+    return imgs
 
 
 def get_photos_from_db(table, last_inserted):
