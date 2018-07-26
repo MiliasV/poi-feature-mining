@@ -144,6 +144,7 @@ if __name__ == '__main__':
     logfile = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_matched.txt"
     last_searched_id = logging_functions.get_last_id_from_logfile(logfile)
     imgs = postgis_functions.get_photos_from_db("matched_gsv_ams", last_searched_id)#last_searched_id)
+    imgs = postgis_functions.get_photos_for_od("matched_gsv_ams", "matched_od_oid_ams")
     # for i in sel_categories:
     #     print('Column("{name}", Numeric),'.format(name=sel_categories[i]["name"].lower().replace(" ", "")))
     #     print('Column("{count}", Numeric),'.format(count=sel_categories[i]["name"].lower().replace(" ", "")+"count"))
