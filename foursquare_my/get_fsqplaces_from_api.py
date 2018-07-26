@@ -91,28 +91,34 @@ def insert_data(session, FTable, search_lat, search_lng, fsq_json, ogc_fid,
 
 
 def config_parameters_for_searching(source, city):
-    # city = "ath"
+    if city == "ams":
+        center_db = "/home/bill/Desktop/thesis/maps/amsterdam/" + city + "_whole_clipped_with_lat_lon.sqlite"
+        table = city + "_whole_clipped_with_lat_lon.sqlite"
+    elif city=="ath":
+        center_db = "/home/bill/Desktop/thesis/maps/athens/" + city + "_whole_clipped_with_lat_lon.sqlite"
+        table = "ath_center_export_lat_lon"
+
     rad = 28
     # databases
     logfile = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_whole_clipped_point_iterations.txt"
     errorfile = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "whole_clipped_errors.txt"
 
-    center_db = "/home/bill/Desktop/thesis/maps/amsterdam/" + city + "_whole_clipped_with_lat_lon.sqlite"
     # connect to osm db
     conn = sqlite3.connect(center_db)
     c = conn.cursor()
     last_searched_id = get_map_points_to_search.get_last_id_from_logfile(logfile)
     # ams_whole_clipped_with_lat_lon ams table
     c.execute("SELECT ogc_fid, lat, Lon "
-              "FROM ams_whole_clipped_with_lat_lon "
+              "FROM {table} "
               "WHERE ogc_fid>={last_id}-1 "
-              "ORDER BY ogc_fid ASC".format(last_id=last_searched_id))
+              "ORDER BY ogc_fid ASC".format(last_id=last_searched_id, table=table))
     return c, rad, logfile, errorfile
 
 
 if __name__ == '__main__':
+    city = "ath"
     cl = setup()
-    c, rad, logfile, errorfile = config_parameters_for_searching("fsq","ams")
+    c, rad, logfile, errorfile = config_parameters_for_searching("fsq",city)
     last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
     # setup table and session
     # define which table (fsq table, count table)
@@ -129,8 +135,8 @@ if __name__ == '__main__':
         get_map_points_to_search.log_last_searched_point(logfile, ogc_fid)
         ll = str(point_lat) + ", " + str(point_lng)
         # define which table
-        session, FTable, CTable = pois_storing_functions.setup_db("fsq_ams_whole__clipped_40",
-                                                                  "fsq_ams_whole_clipped_40_count","FSQ")
+        session, FTable, CTable = pois_storing_functions.setup_db("fsq_" + city + "_whole__clipped_40",
+                                                                  "fsq_" + city + "_whole_clipped_40_count","FSQ")
         # specify which categories to search for!
         # food = 4d4b7105d754a06374d81259
         # arts and entertainment = 4d4b7104d754a06370d81259
@@ -170,4 +176,4 @@ if __name__ == '__main__':
             lng = fsq_json["location"]["lng"]
             count_places, count_duplicates = insert_data(session, FTable, point_lat, point_lng, fsq_json, ogc_fid,
                             count_places, count_duplicates, categories_tree)
-            pois_storing_functions.insert_count_data(session, CTable, ogc_fid, count_places, count_duplicates)
+            #pois_storing_functions.insert_count_data(session, CTable, ogc_fid, count_places, count_duplicates)
