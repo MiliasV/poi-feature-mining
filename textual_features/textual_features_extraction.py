@@ -17,6 +17,9 @@ sys.path.append("../..")
 import emoji
 import pickle
 import ast
+from datetime import datetime
+from datetime import timedelta
+
 try:
     import tweet2vec
     import emoji
@@ -32,7 +35,6 @@ def clean(doc, stop, exclude, lemma):
     stop_free = " ".join([i for i in doc.lower().split() if i not in stop])
     punc_free = ''.join(ch for ch in stop_free if ch not in exclude)
     res = " ".join(lemma.lemmatize(word) for word in punc_free.split())
-
     res = res.replace("amsterdam", "")
     #remove links
     res = re.sub(r"http\S+", "", res)
@@ -139,10 +141,10 @@ def get_text_tweets(table,  eng_stop, nl_stop, eng_exclude, nl_exclude, lemma):
         lang = get_text_language(t["text"])
         if lang == "en":
             # remove stopwords, punctuation, links and lemmatize words
-            eng_tweets.append(clean(t, eng_stop, eng_exclude, lemma).split())
+            eng_tweets.append(clean(t["text"], eng_stop, eng_exclude, lemma).split())
         elif lang == "nl":
             # remove stopwords, punctuation, links and lemmatize words
-            nl_tweets.append(clean(t, nl_stop, nl_exclude, lemma).split())
+            nl_tweets.append(clean(t["text"], nl_stop, nl_exclude, lemma).split())
     return eng_tweets, nl_tweets
 
 
@@ -174,6 +176,22 @@ def add_processed_lda_text_tweets(table):
                                                           "processedtextlda", table, t["id"])
 
 
+def get_processed_lda_tweets_from_db(table, load):
+    if load:
+        eng_tweets_text = load_with_pickle("eng_tweets_text")
+        nl_tweets_text = load_with_pickle("nl_tweets_text")
+        return eng_tweets_text, nl_tweets_text
+    else:
+        eng_tweets = postgis_functions.get_tweets_lda_text_per_lang(table, "en")
+        eng_tweets_text = [t["processedtextlda"].split() for t in eng_tweets]
+        nl_tweets = postgis_functions.get_tweets_lda_text_per_lang(table, "nl")
+        nl_tweets_text = [t["processedtextlda"].split() for t in nl_tweets]
+        # Store tweets
+        save_with_pickle("eng_tweets_text", eng_tweets_text)
+        save_with_pickle("nl_tweets_text", nl_tweets_text)
+        return eng_tweets_text, nl_tweets_text
+
+
 def get_processed_tweets(table, load):
     if load:
         eng_tweets = load_with_pickle("eng_tweets")
@@ -200,7 +218,7 @@ def load_with_pickle(filename):
 
 def save_with_pickle(filename, obj):
     pickle_name = filename + ".pkl"
-    with open(pickle_name, 'rb') as f:
+    with open(pickle_name, 'wb') as f:
         pickle.dump(obj, f)
 
 
@@ -214,92 +232,158 @@ def update_language_from_langid():
         postgis_functions.update_tweets_language("matched_twitter_ams", lang, t["id"])
 
 
-def get_topics_from_lda(tweets, model):
+def get_time_diffs(data, table, id):
+    tweetimes = postgis_functions.get_daytime_by_id(table, id)
+    # create datetime objects
+    tweetimes = [datetime.strptime(x["createdat"], format_str) for x in tweetimes]
+    tweetimes_dif = []
+    for t1, t2 in zip(tweetimes, tweetimes[1:]):
+        tweetimes_dif.append((t2 - t1) / timedelta(days=1))
+    data["timediffavg"] = np.mean(tweetimes_dif)
+    data["timediffmedian"] = np.median(tweetimes_dif)
+    return data
+
+
+def get_topics_from_lda(tweets, model, dict, num_topics):
+    topics = []
+    place_topics = []
     if tweets:
-        eng_tweets_text = [[t["processedtextlda"].split()] for t in tweets]
-        bow = eng_dict.doc2bow(eng_tweets_text)
-        return model.get_document_topics(bow)
-    else:
-        return None
+        tweets_text = [t["processedtextlda"].split() for t in tweets]
+        #print(tweets_text)
+        #eng_tweets_text = [t for tweet in eng_tweets_text for t in tweet]
+        for t in tweets_text:
+            #print(t)
+            bow = dict.doc2bow(t)
+            topic = model.get_document_topics(bow)
+            # if not all topics discovered add them with prob 0
+            if len(topic)<num_topics:
+                for i in range(num_topics):
+                    if True not in [i in x for x in topic]:
+                        topic.append((i,0.0))
+            # sort topics by topic class to take the mean afterwards
+            topic.sort(key=lambda tup: tup[0])  # sorts in place
+            topics.append(topic)
+        for i in range(num_topics):
+            place_topics.append(np.mean([item[i][1] for item in topics]))
+        #print(place_topics)
+    return place_topics
 
 
 if __name__ == '__main__':
     count = 0
+    format_str = "%Y-%m-%d %H:%M:%S"
     t = Translator()
-
     # get places
     fpoints = postgis_functions.get_rows_from_table("matched_fsq_ams")
-    ##################
-    # Topic Modeling #
-    ##################
 
     # add processed tweets for lda to db
-    add_processed_lda_text_tweets("matched_twitter_ams")
+    # add_processed_lda_text_tweets("matched_twitter_ams")
     # get processed tweets for lda per language
-    eng_tweets, nl_tweets = get_processed_tweets("matched_twitter_ams", load=True)
+    print("LOADING Tweets....")
+    num_topics = 5
+    eng_tweets, nl_tweets = get_processed_lda_tweets_from_db("matched_twitter_ams", load=True)
+    print("TRAINING Model...")
     # train or load models
     lda_eng, lda_nl, eng_dict, nl_dict = get_lda_models(eng_tweets, nl_tweets,
-                                                        ntopics=10, passes=5, load=True)
+                                                        ntopics=num_topics, passes=20, load=True)
     # print(lda_eng.show_topic(topic[0], topn=5))
-
     # for every matched place
     for f in fpoints:
         data = {}
         fpoint = {k: v if v is not None else "" for k, v in f.items()}
         data["type"] = postgis_functions.get_type_of_place(fpoint)
         print(fpoint)
-        # get tweets per place
-        eng_tweets = postgis_functions.get_tweets_lda_text_per_lang_from_fsqid("matched_twitter_ams", fpoint["id"], "en")
-        nl_tweets = postgis_functions.get_tweets_lda_text_per_lang_from_fsqid("matched_twitter_ams", fpoint["id"], "nl")
+        data = get_time_diffs(data, "matched_twitter_ams", fpoint["id"])
 
-        eng_topics = get_topic_from_lda(eng_tweets, lda_eng)
-        nl_topics = get_topic_from_lda(nl_tweets, lda_nl)
+        ######################
+        # LDA Topic Modeling #
+        ######################
+        #  get tweets per place per lang
+        eng_tweets_lda = postgis_functions.get_tweets_lda_text_per_lang_from_fsqid("matched_twitter_ams", fpoint["id"], "en")
+        nl_tweets_lda = postgis_functions.get_tweets_lda_text_per_lang_from_fsqid("matched_twitter_ams", fpoint["id"], "nl")
+        print("GETTING Topics from ", len(eng_tweets_lda) + len(nl_tweets_lda), " Tweets")
+        # print(lda_eng.show_topics(num_topics=5))
+        eng_topics = get_topics_from_lda(eng_tweets_lda, lda_eng, eng_dict, num_topics)
+        nl_topics = get_topics_from_lda(nl_tweets_lda, lda_nl, nl_dict, num_topics)
+        # for i in range(len(eng_topics)):
+        #     print(eng_topics[i], lda_eng.show_topic(i, topn=5))
+        #print(lda_nl.show_topics())
+        #print(nl_topics)
+        for i, val in enumerate(eng_topics):
+            data["topiceng" + str(i+1)] = eng_topics[i]
+            data["topicnl" + str(i+1)] = nl_topics[i]
+            data["topic" + str(i+1)] = (eng_topics[i] + nl_topics[i]) /2.0
 
-        print("############################################################")
+        ####################
+        # Tweet statistics #
+        ####################
+        # get unprocessed text
+        eng_tweets = postgis_functions.get_tweets_text_per_lang("matched_twitter_ams", fpoint["id"], "en")
+        nl_tweets = postgis_functions.get_tweets_text_per_lang("matched_twitter_ams", fpoint["id"], "nl")
+        # count of tweets - Think about it as I gather until 50-100 tweets per place
+        data["entweetcount"] = len(eng_tweets)
+        data["nltweetcount"] = len(nl_tweets)
+        data["totaltweetcount"] = data["entweetcount"] + data["nltweetcount"]
 
-        # count of tweets
-        data["encount"] = len(eng_tweets)
-        data["nlcount"] = len(nl_tweets)
-        data["totalcount"] = data["encount"] + data["nlcount"]
+        print(eng_tweets)
+        print(nl_tweets)
+        eng_tweets = [x["text"] for x in eng_tweets]
+        nl_tweets = [x["text"] for x in nl_tweets]
+        print(eng_tweets)
+        print(nl_tweets)
+
+        # nl_tweets_flat = [x for y in nl_tweets for x in y]
+
+        # count of words
+        data["enwordcount"] = sum([len(x.split(" ")) for x in eng_tweets])
+        data["nlwordcount"] = sum([len(x.split(" ")) for x in nl_tweets])
+        data["totalwordcount"] = data["enwordcount"] + data["nlwordcount"]
 
         # avg. count of words
-        data["engavgword"] = np.mean([len(t.split(" ")) for t in eng_tweets])
-        data["nlavgword"] = np.mean([len(t.split(" ")) for t in nl_tweets])
-        ######################
-        # Sentiment analysis #
-        ######################
-        # POLYGLOT
-        # print(eng_tweets)
-        # print(nl_tweets)
-        # eng_sent, nl_sent = get_sent_from_polyglot(eng_tweets, nl_tweets)
-        # print(eng_sent)
-        # print(nl_sent)
+        data["engavgword"] = data["enwordcount"] / data["entweetcount"]
+        data["nlavgword"] = data["nlwordcount"] / data["nltweetcount"]
+        data["avgword"] = (data["engavgword"] + data["nlavgword"]) / 2.0
+        print(eng_tweets)
 
-        ############
-        # TextBlob #
-        ############
-        # for english tweets
-        data["enpol"], data["ensubj"] = get_sent_from_textblob(eng_tweets)
-        # for dutch tweets
-        # translate
-        if nl_tweets:
-            nl_trans_tweets = get_text_trans_in_eng(t, nl_tweets)
-            data["nlpol"], data["nlsub"] = get_sent_from_textblob(nl_trans_tweets)
-        else:
-            data["npol"], data["nlsub"] = None, None
-
-
-        ##################
-        # Topic Modeling #
-        ##################
-        data["entopics"], nltopicsdutch = get_topics_from_lda(eng_tweets, nl_tweets, ntopics=2, nwords=1)
-        # translate topics
-        data["nltopics"] = [t.translate(str(word), src="nl", dest="en").text for word in nltopicsdutch]
-        #print(data)
-        #data["processedtext"] = tweet2vec.preprocess(t["text"].rstrip())
-
-        ##################
-        #  Tweet 2 Vec   #
-        ##################
+        tweetimes = postgis_functions.get_daytime_by_id("matched_twitter_ams", fpoint["id"])
         pprint.pprint(data)
         print("############################################################")
+
+    ######################
+    # Sentiment analysis #
+    ######################
+    # POLYGLOT
+    # print(eng_tweets)
+    # print(nl_tweets)
+    # eng_sent, nl_sent = get_sent_from_polyglot(eng_tweets, nl_tweets)
+    # print(eng_sent)
+    # print(nl_sent)
+
+    ############
+    # TextBlob #
+    ############
+    # for english tweets
+    data["enpol"], data["ensubj"] = get_sent_from_textblob(eng_tweets)
+    # for dutch tweets
+    # translate
+    if nl_tweets:
+        nl_trans_tweets = get_text_trans_in_eng(t, nl_tweets)
+        data["nlpol"], data["nlsub"] = get_sent_from_textblob(nl_trans_tweets)
+    else:
+        data["npol"], data["nlsub"] = None, None
+
+
+    ##################
+    # Topic Modeling #
+    ##################
+    data["entopics"], nltopicsdutch = get_topics_from_lda(eng_tweets, nl_tweets, ntopics=2, nwords=1)
+    # translate topics
+    data["nltopics"] = [t.translate(str(word), src="nl", dest="en").text for word in nltopicsdutch]
+    #print(data)
+    #data["processedtext"] = tweet2vec.preprocess(t["text"].rstrip())
+
+    ##################
+    #  Tweet 2 Vec   #
+    ##################
+    pprint.pprint(data)
+    print("############################################################")
