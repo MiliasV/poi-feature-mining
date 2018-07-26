@@ -2,7 +2,7 @@ import sys
 sys.path.append("..")
 sys.path.append("../..")
 sys.path.append("../../textual_features/")
-print(sys.path)
+#print(sys.path)
 import twitter.twitter_config as twitter_config
 import pprint
 import postgis_functions
@@ -10,8 +10,8 @@ import pois_storing_functions
 import tweepy
 import json
 import psycopg2
-import textual_features.textual_features_extraction as textual_features_extraction
-
+#import textual_features.textual_features_extraction.get_text_language as get_text_language
+import langid
 
 if sys.version_info[0] < 3:
     import got
@@ -45,6 +45,12 @@ def get_tweets_from_loc_since_until_radius(l, since, until, rad):
 # bebop google 52.010858,4.359553
 
 
+def get_text_language(text):
+    # get text's language
+    lang = langid.classify(text)[0]
+    return lang
+
+
 def insert_tweet_to_db(point_id, places_id, tweet, session, TTable):
     res = {}
     res["id"] = str(tweet.id) + "_" + places_id
@@ -55,7 +61,7 @@ def insert_tweet_to_db(point_id, places_id, tweet, session, TTable):
     res["month"] = tweet.created_at.month
     res["day"] = tweet.created_at.day
     res["hour"] = tweet.created_at.hour
-    res["lang"] = textual_features_extraction.get_text_language(tweet.text)
+    res["lang"] = get_text_language(tweet.text)
     res["text"] = tweet.text
     res["favoritecount"] = tweet.favorite_count
     res["retweetcount"] = tweet.retweet_count
@@ -65,7 +71,6 @@ def insert_tweet_to_db(point_id, places_id, tweet, session, TTable):
         res["geom"] = 'POINT({} {})'.format(res["lng"], res["lat"])
     else:
         res["lat"], res["lng"], res["geom"] = None, None, None
-    #res["lang"] = tweet._json["lang"]
     res["json"] = json.dumps(tweet._json)
     try:
         session.add(TTable(**res))
@@ -108,7 +113,7 @@ if __name__ == '__main__':
             last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
             #print(last_searched_id)
             #points = postgis_functions.get_pois_from_fsq_db("matched_fsq_ams", last_searched_id)
-            points = get_fsq_points_less_tweets_than(5)
+            points = get_fsq_points_less_tweets_than(1)
             session, TTable = pois_storing_functions.setup_db("matched_twitter_ams",
                                                                 "twitter_ams_places_count", "twitter")
             rad = "0.05km"
@@ -123,8 +128,8 @@ if __name__ == '__main__':
                 tweets = get_tweets_from_loc_since_until_radius(ll, since, until, rad)
                 print(tweets)
                 print("Got tweets")
-                if len(tweets)>50:
-                    tweets = tweets[0:50]
+                if len(tweets)>100:
+                    tweets = tweets[0:100]
                 print(len(tweets))
                 for tweet in tweets:
                     tweet_by_id = api.get_status(tweet.id)
