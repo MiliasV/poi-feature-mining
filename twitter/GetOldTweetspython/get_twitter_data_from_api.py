@@ -113,11 +113,11 @@ if __name__ == '__main__':
             last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
             #print(last_searched_id)
             #points = postgis_functions.get_pois_from_fsq_db("matched_fsq_ams", last_searched_id)
-            points = get_fsq_points_less_tweets_than(1)
+            points = get_fsq_points_less_tweets_than(5)
             session, TTable = pois_storing_functions.setup_db("matched_twitter_ams",
                                                                 "twitter_ams_places_count", "twitter")
             rad = "0.05km"
-            since = "2016-01-01"
+            since = "2017-01-01"
             until = "2018-12-19"
             # since = "2014-01-01"
             # until = "2016-12-30"
@@ -128,8 +128,8 @@ if __name__ == '__main__':
                 tweets = get_tweets_from_loc_since_until_radius(ll, since, until, rad)
                 print(tweets)
                 print("Got tweets")
-                if len(tweets)>100:
-                    tweets = tweets[0:100]
+                # if len(tweets)>100:
+                #     tweets = tweets[0:100]
                 print(len(tweets))
                 for tweet in tweets:
                     tweet_by_id = api.get_status(tweet.id)

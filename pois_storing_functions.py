@@ -385,6 +385,82 @@ def create_count_per_poi_table(engine, table_name, metadata):
         metadata.create_all()
 
 
+def create_text_features_table(engine, table_name, metadata):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("id", String, primary_key=True, nullable=False),
+              Column("name", String),
+              Column("point", Numeric),
+              Column("lat", Numeric),
+              Column("lng", Numeric),
+              Column("type", String),
+              Column("timediffavg", Numeric),
+              Column("timediffmedian", Numeric),
+              Column("topiceng51", Numeric),
+              Column("topicnl51", Numeric),
+              Column("topic51", Numeric),
+              Column("topiceng52", Numeric),
+              Column("topicnl52", Numeric),
+              Column("topic52", Numeric),
+              Column("topiceng53", Numeric),
+              Column("topicnl53", Numeric),
+              Column("topic53", Numeric),
+              Column("topiceng54", Numeric),
+              Column("topicnl54", Numeric),
+              Column("topic54", Numeric),
+              Column("topiceng55", Numeric),
+              Column("topicnl55", Numeric),
+              Column("topic55", Numeric),
+              Column("topiceng101", Numeric),
+              Column("topicnl101", Numeric),
+              Column("topic101", Numeric),
+              Column("topiceng102", Numeric),
+              Column("topicnl102", Numeric),
+              Column("topic102", Numeric),
+              Column("topiceng103", Numeric),
+              Column("topicnl103", Numeric),
+              Column("topic103", Numeric),
+              Column("topiceng104", Numeric),
+              Column("topicnl104", Numeric),
+              Column("topic104", Numeric),
+              Column("topiceng105", Numeric),
+              Column("topicnl105", Numeric),
+              Column("topic105", Numeric),
+              Column("topiceng106", Numeric),
+              Column("topicnl106", Numeric),
+              Column("topic106", Numeric),
+              Column("topiceng107", Numeric),
+              Column("topicnl107", Numeric),
+              Column("topic107", Numeric),
+              Column("topiceng108", Numeric),
+              Column("topicnl108", Numeric),
+              Column("topic108", Numeric),
+              Column("topiceng109", Numeric),
+              Column("topicnl109", Numeric),
+              Column("topic109", Numeric),
+              Column("topiceng1010", Numeric),
+              Column("topicnl1010", Numeric),
+              Column("topic1010", Numeric),
+              Column("entweetcount", Numeric),
+              Column("nltweetcount", Numeric),
+              Column("totaltweetcount", Numeric),
+              Column("enwordcount", Numeric),
+              Column("nlwordcount", Numeric),
+              Column("totalwordcount", Numeric),
+              Column("engavgword", Numeric),
+              Column("nlavgword", Numeric),
+              Column("avgword", Numeric),
+              Column("enpolpoly", Numeric),
+              Column("nlpolpoly", Numeric),
+              Column("enpolblob", Numeric),
+              Column("ensubjblob", Numeric),
+              Column("nlpolblob", Numeric),
+              Column("nlsubblob", Numeric)
+              )
+        metadata.create_all()
+
+
 def create_similarities_table(engine, table_name, metadata):
     # if table does not exist
     if not engine.dialect.has_table(engine, table_name):
@@ -473,6 +549,8 @@ def setup_db(pois_table_name, count_table_name, source):
         # # create a Session
         # session = Session(db)
         # return session, STable
+    elif source == "text_features":
+        create_text_features_table(db, pois_table_name, metadata)
     elif source == "similarities":
         create_similarities_table(db, pois_table_name, metadata)
     elif source == "od_coco":

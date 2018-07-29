@@ -1,5 +1,12 @@
 # Functions to get OSM POIs' data from sqlite db
 
+
+# OSM categories
+# pois_ids = get_osm_data.get_ids_by_category(c, "'amenity'", "('cinema', 'nightclub', 'theatre', "
+#                                                           "'bar', 'cafe', 'fast_food', 'pub', 'restaurant'"
+#                                                           "'pharmacy', 'hospital', 'university','school'"
+#                                                           "'cemetery', 'police', 'church', 'archaeologogical_site')")
+
 def get_osm_name_addr_info(c, poi_id):
     # choose what to use for matching!
     name = get_name_from_id(c, poi_id)
@@ -21,6 +28,10 @@ def get_info_by_id(c, search_id):
         return nodes, nodes_tags
     else:
         return [], []
+
+
+def get_all_pois(c):
+    return c.execute("SELECT * FROM nodes").fetchall()
 
 
 def get_all_ids(c):
@@ -70,3 +81,12 @@ def get_lat_long_from_id(c, id):
     return c.execute("SELECT * FROM nodes WHERE id={object_id}".format(object_id=id)).fetchall()
 
 
+def get_data_for_matching(osm_info, c, poi_id):
+    osm_info["id"] = poi_id
+    osm_info["street"] = get_street_from_id(c, poi_id)
+    osm_info["street_num"] = get_street_num_from_id(c, poi_id)
+    osm_info["type"] = get_type_from_id(c, poi_id)
+    osm_info["website"] = get_website_from_id(c, poi_id)
+    # get longtitude and latitude
+    osm_info["ll"] = get_lat_long_from_id(c, poi_id)
+    return osm_info

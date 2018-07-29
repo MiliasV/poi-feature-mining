@@ -113,9 +113,17 @@ def get_id_not_in_table(table_source, table_target, col):
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     c.execute("SELECT id from {table_s} "
               "WHERE id NOT IN ("
-              "SELECT {id_t} from {table_t}".format(table_s=table_source, table_t=table_target, id_t=col))
+              "SELECT {id_t} from {table_t})".format(table_s=table_source, table_t=table_target, id_t=col))
     return c.fetchall()
 
+
+def get_rows_from_id_not_in_table(table_source, table_target, col):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * from {table_s} "
+              "WHERE id NOT IN ("
+              "SELECT {id_t} from {table_t})".format(table_s=table_source, table_t=table_target, id_t=col))
+    return c.fetchall()
 
 def get_row_by_id(tab, getid):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
@@ -157,6 +165,13 @@ def get_pois_from_fsq_db(tab, last_searched):
               "ORDER BY point".format(table=tab, last_point=last_searched))
     return c
 
+def get_photos_from_id(tab, id_list):
+    conn = psycopg2.connect("dbname='pois' user='postgres' host='localhost' password='postgres'")
+    imgs = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    imgs.execute("SELECT  id, point, placesid, head, panosid, year, month, lat, lng, geom, path  "
+                 "FROM {tab_s} "
+                 "WHERE id not in {id_l})".format(tab_s=tab, id_l=id_list))
+    return imgs
 
 def get_photos_for_od(table_source, table_dest):
     conn = psycopg2.connect("dbname='pois' user='postgres' host='localhost' password='postgres'")
