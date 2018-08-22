@@ -496,6 +496,70 @@ def create_similarities_table(engine, table_name, metadata):
         metadata.create_all()
 
 
+def create_gf_features_table(engine, table_name, metadata):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("id", String, primary_key=True, nullable=False),
+              Column("name", String),
+              Column("type", String),
+              Column("point", Numeric),
+              Column("gid", String),
+              Column("fid", String),
+              Column("ghasweb", Numeric),
+              Column("fhasweb", Numeric),
+              Column("ghasphone", Numeric),
+              Column("fhasphone", Numeric),
+              Column("grscount", Numeric),
+              Column("grating", Numeric),
+              Column("frating", Numeric),
+              Column("ftipcount", Numeric),
+              Column("fprice", String),
+              Column("fphotoscount", Numeric),
+              Column("flikescount", Numeric),
+              Column("fhasfacebook", Numeric),
+              Column("fhastwitter", Numeric),
+              Column("ghaspoptimes", Numeric),
+              Column("Monday", String),
+              Column("Tuesday", String),
+              Column("Wednesday", String),
+              Column("Thursday", String),
+              Column("Friday", String),
+              Column("Saturday", String),
+              Column("Sunday", String),
+              Column("day0close", String),
+              Column("day0open", String),
+              Column("day1close", String),
+              Column("day1open", String),
+              Column("day2close", String),
+              Column("day2open", String),
+              Column("day3close", String),
+              Column("day3open", String),
+              Column("day4close", String),
+              Column("day4open", String),
+              Column("day5close", String),
+              Column("day5open", String),
+              Column("day6close", String),
+              Column("day6open", String)
+              )
+        metadata.create_all()
+
+
+def create_reviews_features_table(engine, table_name, metadata):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("id", String, primary_key=True, nullable=False),
+              Column("gid", String),
+              Column("name", String),
+              Column("type", String),
+              Column("point", Numeric),
+              Column("lang", String),
+              Column("text", String),
+              Column("processedldatext", String)
+              )
+        metadata.create_all()
+
 class ALTable(object):
     pass
 
@@ -557,9 +621,12 @@ def setup_db(pois_table_name, count_table_name, source):
         create_object_detection_coco_table(db, pois_table_name, metadata)
     elif source == "od_oid":
         create_object_detection_oid_table(db, pois_table_name, metadata)
-
+    elif source == "gf":
+        create_gf_features_table(db, pois_table_name, metadata)
+    elif source == "reviews":
+        create_reviews_features_table(db, pois_table_name, metadata)
     else:
-        print("ERROR, none of google, FSQ, gsv or twitter given")
+        print("ERROR, none of the right options were given")
         return 0
     #create_count_per_poi_table(db, count_table_name, metadata)
     # reflect the tables

@@ -156,6 +156,22 @@ def get_points_from_db(tab, last_searched):
     return c
 
 
+def get_google_fsq_features(gtab, ftab):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+    c.execute("SELECT g.id as gid, f.id as fid, g.point, g.name as gname, f.name as fname, "
+              "g.type, g.website as gwebsite, f.website as fwebsite, g.rscount as  grscount,"
+              " g.phone as gphone, f.phone as fphone, g.rating as grating, f.rating as frating, "
+              "g.poptimes as gpoptimes, f.tipcount as ftipcount, f.price as fprice, "
+              "f.likescount as flikescount, f.photoscount as fphotoscount, f.facebook as ffacebook, "
+              "f.twitter as ftwitter, g.json as gjson "
+              "FROM {google} as g "
+              "INNER JOIN "
+              "{fsq} as f "
+              "ON g.point = f.point".format(google=gtab, fsq=ftab))
+    return c
+
+
 def get_pois_from_fsq_db(tab, last_searched):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
