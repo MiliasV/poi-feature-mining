@@ -50,16 +50,16 @@ def update_tweets_language(table, data, tweetid):
     conn.commit()
 
 
-def get_tweets_text_per_lang(tab, fsqid, lang):
+def get_col_from_feature_per_lang(tab, col,  feature, val, lang):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("SELECT text from {table} "
-              "WHERE fsqid = '{fid}'"
-              "AND lang = '{lang}'".format(table=tab, lang=lang, fid=fsqid))
+    c.execute("SELECT {c} from {table} "
+              "WHERE {f} = '{fid}'"
+              "AND lang = '{lang}'".format(table=tab, c=col, f=feature, lang=lang, fid=val))
     return c.fetchall()
 
 
-def get_tweets_lda_text_per_lang(tab, lang):
+def get_lda_text_per_lang(tab, lang):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     c.execute("SELECT processedtextlda from {table} "
@@ -125,6 +125,7 @@ def get_rows_from_id_not_in_table(table_source, table_target, col):
               "SELECT {id_t} from {table_t})".format(table_s=table_source, table_t=table_target, id_t=col))
     return c.fetchall()
 
+
 def get_row_by_id(tab, getid):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -133,7 +134,6 @@ def get_row_by_id(tab, getid):
     poi = c.fetchall()[0]
     res = {k: v if v is not None else "" for k, v in poi.items()}
     return res
-
 
 
 def get_distance(fpoint, gpoint):
@@ -171,6 +171,14 @@ def get_google_fsq_features(gtab, ftab):
               "ON g.point = f.point".format(google=gtab, fsq=ftab))
     return c
 
+
+def get_row_from_feature_and_lang(tab, feature, value, lang):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * "
+              "FROM {table} "
+              "WHERE {f}='{v}'AND lang='{l}'".format(table=tab, f=feature, v=value, l=lang))
+    return c.fetchall()
 
 def get_pois_from_fsq_db(tab, last_searched):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
