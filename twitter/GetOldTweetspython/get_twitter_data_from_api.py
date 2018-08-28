@@ -98,7 +98,8 @@ def get_fsq_points_less_tweets_than(num):
               "GROUP BY fsqid "
               "having COUNT(*)<{n}) "
               "OR "
-              "id NOT IN (SELECT fsqid from matched_twitter_ams)".format(n=num))
+              "id NOT IN (SELECT fsqid from matched_twitter_ams)"
+              "ORDER BY RANDOM()".format(n=num))
     return c
 
 
@@ -113,7 +114,7 @@ if __name__ == '__main__':
             last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
             #print(last_searched_id)
             #points = postgis_functions.get_pois_from_fsq_db("matched_fsq_ams", last_searched_id)
-            points = get_fsq_points_less_tweets_than(5)
+            points = get_fsq_points_less_tweets_than(2)
             session, TTable = pois_storing_functions.setup_db("matched_twitter_ams",
                                                                 "twitter_ams_places_count", "twitter")
             rad = "0.05km"
