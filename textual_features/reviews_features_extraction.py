@@ -206,19 +206,22 @@ def get_topics_from_lda(obj, model, dict, num_topics):
 if __name__ == '__main__':
     # Store reviews to table and process text for lda
     # store_google_reviews_and_processed_text()
+    store_table = "matched_review_features_10_25_ams"
+    num_topics_small = 10
+    num_topics_big = 25
+    session, RTable = pois_storing_functions.setup_db_text(store_table, "reviews",
+                                                            num_topics_small = 10,
+                                                            num_topics_big = 25)
     gpoints = postgis_functions.get_rows_from_table("matched_google_ams")
-    session, RTable = pois_storing_functions.setup_db("matched_review_features_ams", "notused", "review_features")
-
-    print("LOADING Reviews....")
     num_topics = 5
-    eng_rev, nl_rev = get_processed_lda_reviews_from_db("matched_google_reviews_ams", load=False)
+    eng_rev, nl_rev = get_processed_lda_reviews_from_db("matched_google_reviews_ams", load=True)
     print("TRAINING Model...")
 
     # train or load models
     lda_eng_5, lda_nl_5, eng_dict, nl_dict = get_lda_models(eng_rev, nl_rev,
-                                                        ntopics=num_topics, passes=20, load=False, evaluate=False)
+                                                        ntopics=num_topics_small, passes=20, load=True, evaluate=False)
     lda_eng_10, lda_nl_10, eng_dict, nl_dict = get_lda_models(eng_rev, nl_rev,
-                                                        ntopics=10, passes=20, load=False, evaluate=False)
+                                                        ntopics=num_topics_big, passes=20, load=True, evaluate=False)
 
     for g in gpoints:
         print(g)
@@ -244,18 +247,18 @@ if __name__ == '__main__':
         #print(lda_eng_5.show_topics(num_topics=5, num_words=5))
         #print(lda_eng_10.show_topics(num_topics=10, num_words=5))
 
-        eng_topics_5 = get_topics_from_lda(eng_rev_lda, lda_eng_5, eng_dict, num_topics=5)
-        nl_topics_5 = get_topics_from_lda(nl_rev_lda, lda_nl_5, nl_dict, num_topics=5)
+        eng_topics_5 = get_topics_from_lda(eng_rev_lda, lda_eng_5, eng_dict, num_topics=num_topics_small)
+        nl_topics_5 = get_topics_from_lda(nl_rev_lda, lda_nl_5, nl_dict, num_topics=num_topics_small)
 
-        eng_topics_10 = get_topics_from_lda(eng_rev_lda, lda_eng_10, eng_dict, num_topics=10)
-        nl_topics_10 = get_topics_from_lda(nl_rev_lda, lda_nl_10, nl_dict, num_topics=10)
+        eng_topics_10 = get_topics_from_lda(eng_rev_lda, lda_eng_10, eng_dict, num_topics=num_topics_big)
+        nl_topics_10 = get_topics_from_lda(nl_rev_lda, lda_nl_10, nl_dict, num_topics=num_topics_big)
 
         for i, val in enumerate(eng_topics_5):
-            data["topiceng5" + str(i+1)] = float(eng_topics_5[i])
-            data["topicnl5" + str(i+1)] = float(nl_topics_5[i])
+            data["topiceng" + str(num_topics_small) + str(i+1)] = float(eng_topics_5[i])
+            data["topicnl" + str(num_topics_small) + str(i+1)] = float(nl_topics_5[i])
         for i, val in enumerate(eng_topics_10):
-            data["topiceng10" + str(i+1)] = float(eng_topics_10[i])
-            data["topicnl10" + str(i + 1)] = float(nl_topics_10[i])
+            data["topiceng" + str(num_topics_big) + str(i+1)] = float(eng_topics_10[i])
+            data["topicnl" + str(num_topics_big) + str(i + 1)] = float(nl_topics_10[i])
 
 
         ####################

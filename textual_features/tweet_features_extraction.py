@@ -312,25 +312,28 @@ if __name__ == '__main__':
     # initializations
     count = 0
     format_str = "%Y-%m-%d %H:%M:%S"
-    session, TFTable = pois_storing_functions.setup_db("matched_text_features_ams", "notused", "text_features")
-
+    store_table = "matched_text_features_10_25_ams"
+    num_topics_small = 10
+    num_topics_big = 25
+    session, TFTable = pois_storing_functions.setup_db_text(store_table, "twitter",
+                                                            num_topics_small = 10,
+                                                            num_topics_big = 25, )
     # get places
     #fpoints = postgis_functions.get_rows_from_table("matched_fsq_ams")
-    fpoints = postgis_functions.get_rows_from_id_not_in_table("matched_fsq_ams", "matched_text_features_ams", "id")
+    fpoints = postgis_functions.get_rows_from_id_not_in_table("matched_fsq_ams", store_table, "id")
 
     # ADD processed tweets for lda to db
     add_processed_lda_text_tweets("matched_twitter_ams")
     # get processed tweets for lda per language
     print("LOADING Tweets....")
-    num_topics = 5
     eng_tweets, nl_tweets = get_processed_lda_tweets_from_db("matched_twitter_ams", load=False)
     print("TRAINING Model...")
     # train or load models
     lda_eng_5, lda_nl_5, eng_dict, nl_dict = get_lda_models(eng_tweets, nl_tweets,
-                                                        ntopics=num_topics, passes=20, load=False, evaluate=False)
+                                                        ntopics=num_topics_small, passes=20, load=True, evaluate=False)
 
     lda_eng_10, lda_nl_10, eng_dict, nl_dict = get_lda_models(eng_tweets, nl_tweets,
-                                                        ntopics=10, passes=20, load=False, evaluate=False)
+                                                        ntopics=num_topics_big, passes=20, load=True, evaluate=False)
 
     # print(lda_eng.show_topic(topic[0], topn=5))
     # for every matched place
@@ -357,28 +360,29 @@ if __name__ == '__main__':
         #print(lda_eng_5.show_topics(num_topics=5, num_words=5))
         #print(lda_eng_10.show_topics(num_topics=10, num_words=5))
 
-        eng_topics_5 = get_topics_from_lda(eng_tweets_lda, lda_eng_5, eng_dict, num_topics=5)
-        nl_topics_5 = get_topics_from_lda(nl_tweets_lda, lda_nl_5, nl_dict, num_topics=5)
+        eng_topics_5 = get_topics_from_lda(eng_tweets_lda, lda_eng_5, eng_dict, num_topics=num_topics_small)
+        nl_topics_5 = get_topics_from_lda(nl_tweets_lda, lda_nl_5, nl_dict, num_topics=num_topics_small)
 
-        eng_topics_10 = get_topics_from_lda(eng_tweets_lda, lda_eng_10, eng_dict, num_topics=10)
-        nl_topics_10 = get_topics_from_lda(nl_tweets_lda, lda_nl_10, nl_dict, num_topics=10)
+        eng_topics_10 = get_topics_from_lda(eng_tweets_lda, lda_eng_10, eng_dict, num_topics=num_topics_big)
+        nl_topics_10 = get_topics_from_lda(nl_tweets_lda, lda_nl_10, nl_dict, num_topics=num_topics_big)
 
         # for i in range(len(eng_topics)):
         #     print(eng_topics[i], lda_eng.show_topic(i, topn=5))
 
         for i, val in enumerate(eng_topics_5):
-            data["topiceng5" + str(i+1)] = float(eng_topics_5[i])
-            data["topicnl5" + str(i+1)] = float(nl_topics_5[i])
+            data["topiceng" + str(num_topics_small) + str(i+1)] = float(eng_topics_5[i])
+            data["topicnl" + str(num_topics_small) + str(i+1)] = float(nl_topics_5[i])
         for i, val in enumerate(eng_topics_10):
-            data["topiceng10" + str(i+1)] = float(eng_topics_10[i])
-            data["topicnl10" + str(i + 1)] = float(nl_topics_10[i])
+            data["topiceng" + str(num_topics_big) + str(i+1)] = float(eng_topics_10[i])
+            data["topicnl" + str(num_topics_big) + str(i + 1)] = float(nl_topics_10[i])
 
         ####################
         # Tweet statistics #
         ####################
         # get unprocessed text
-        eng_tweets = postgis_functions.get_text_per_lang("matched_twitter_ams", "fsqid", fpoint["id"], "en")
-        nl_tweets = postgis_functions.get_text_per_lang("matched_twitter_ams", "fsqid", fpoint["id"], "nl")
+        eng_tweets = postgis_functions.get_col_from_feature_per_lang("matched_twitter_ams", "text", "fsqid", fpoint["id"], "en")
+        nl_tweets = postgis_functions.get_col_from_feature_per_lang("matched_twitter_ams", "text", "fsqid", fpoint["id"], "nl")
+
         # count of tweets - Think about it as I gather until 50-100 tweets per place
         data["entweetcount"] = len(eng_tweets)
         data["nltweetcount"] = len(nl_tweets)
