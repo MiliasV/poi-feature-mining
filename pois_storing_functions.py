@@ -385,7 +385,7 @@ def create_count_per_poi_table(engine, table_name, metadata):
         metadata.create_all()
 
 
-def create_text_features_table(engine, table_name, metadata):
+def create_text_features_table(engine, table_name,  metadata):
     # if table does not exist
     if not engine.dialect.has_table(engine, table_name):
         Table(table_name, metadata,
@@ -445,6 +445,73 @@ def create_text_features_table(engine, table_name, metadata):
               )
         metadata.create_all()
 
+
+def create_text_features_table2(engine, table_name,  metadata, num_topics_small, num_topics_big):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("id", String, primary_key=True, nullable=False),
+              Column("name", String),
+              Column("point", Numeric),
+              Column("lat", Numeric),
+              Column("lng", Numeric),
+              Column("type", String),
+              Column("timediffavg", Numeric),
+              Column("timediffmedian", Numeric),
+              Column("entweetcount", Numeric),
+              Column("nltweetcount", Numeric),
+              Column("totaltweetcount", Numeric),
+              Column("enwordcount", Numeric),
+              Column("nlwordcount", Numeric),
+              Column("totalwordcount", Numeric),
+              Column("engavgword", Numeric),
+              Column("nlavgword", Numeric),
+              Column("avgword", Numeric),
+              Column("enpolpoly", Numeric),
+              Column("nlpolpoly", Numeric),
+              Column("enpolblob", Numeric),
+              Column("ensubjblob", Numeric),
+              Column("nlpolblob", Numeric),
+              Column("nlsubblob", Numeric),
+              *(Column("topiceng" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
+              *(Column("topicnl" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
+              *(Column("topiceng" + str(num_topics_big) + str(i + 1), String()) for i in range(num_topics_big)),
+              *(Column("topicnl" + str(num_topics_big) + str(i + 1) , String()) for i in range(num_topics_big))
+              )
+        metadata.create_all()
+
+
+def create_review_features_table2(engine, table_name,  metadata, num_topics_small, num_topics_big):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("id", String, primary_key=True, nullable=False),
+              Column("name", String),
+              Column("point", Numeric),
+              Column("lat", Numeric),
+              Column("lng", Numeric),
+              Column("type", String),
+              Column("enrevcount", Numeric),
+              Column("nlrevcount", Numeric),
+              Column("totalrevcount", Numeric),
+              Column("enwordcount", Numeric),
+              Column("nlwordcount", Numeric),
+              Column("totalwordcount", Numeric),
+              Column("engavgword", Numeric),
+              Column("nlavgword", Numeric),
+              Column("avgword", Numeric),
+              Column("enpolpoly", Numeric),
+              Column("nlpolpoly", Numeric),
+              Column("enpolblob", Numeric),
+              Column("ensubjblob", Numeric),
+              Column("nlpolblob", Numeric),
+              Column("nlsubblob", Numeric),
+              *(Column("topiceng" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
+              *(Column("topicnl" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
+              *(Column("topiceng" + str(num_topics_big) + str(i + 1), String()) for i in range(num_topics_big)),
+              *(Column("topicnl" + str(num_topics_big) + str(i + 1) , String()) for i in range(num_topics_big))
+              )
+        metadata.create_all()
 
 def create_review_features_table(engine, table_name, metadata):
     # if table does not exist
@@ -684,6 +751,24 @@ def setup_db(pois_table_name, count_table_name, source):
     session = Session(db)
     return session, STable #, CTable
 
+
+def setup_db_text(pois_table_name, source, num_topics_small, num_topics_big):
+      Base = automap_base()
+      # Connect to the database
+      db = create_engine('postgresql://postgres:postgres@localhost/pois')
+      # create object to manage table definitions
+      metadata = MetaData(db)
+      # create table if it doesn't exist - also define the table.
+      if source == "twitter":
+            create_text_features_table2(db, pois_table_name, metadata, num_topics_small, num_topics_big)
+      elif source == "reviews":
+            create_review_features_table2(db, pois_table_name, metadata, num_topics_small, num_topics_big)
+      # reflect the tables
+      Base.prepare(db, reflect=True)
+      STable = getattr(Base.classes, pois_table_name)
+      # create a Session
+      session = Session(db)
+      return session, STable
 
 def get_last_id_from_logfile(logfile):
     with open(logfile, "r") as f:
