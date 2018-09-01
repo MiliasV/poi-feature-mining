@@ -1,19 +1,26 @@
-import psycopg2
 import pandas as pd
-from sklearn.model_selection import train_test_split
 import numpy as np
-# Importing Gensim
-import gensim
-from gensim import corpora
+import psycopg2
 import matplotlib.pyplot as plt
 from functools import reduce
+import seaborn as sns
+import matplotlib.pyplot as plt
+from collections import Counter
+from sqlalchemy import create_engine
+
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import train_test_split
 from sklearn import svm
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import RandomForestClassifier, VotingClassifier, GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier, GradientBoostingClassifier, VotingClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn import linear_model
 from sklearn.metrics import confusion_matrix
 from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import AdaBoostClassifier
+from imblearn.over_sampling import SMOTE
+
 
 def read_table_as_df(table):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
@@ -29,84 +36,151 @@ def gradient_boost(features_train, labels_train, variables):
     return gb_classifier
 
 
+def one_hot_conversion(df, cols):
+    label_encoder = LabelEncoder()
+    df[[cols]] = df[[cols]].apply(label_encoder)
+    return df
+    # # binary encode
+    # onehot_encoder = OneHotEncoder(sparse=False)
+
+
+def show_correlations(df):
+    # plt.matshow(df.corr())
+    corr = df.corr()
+    sns.heatmap(corr,
+                xticklabels=corr.columns.values,
+                yticklabels=corr.columns.values)
+    plt.show()
+
+
+def preprocess_df(df, label):
+    if label == "gf":
+        df = df.drop(["id", "name", "type", "gid", "fid", "Monday", "Tuesday",
+                            "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "fprice"], axis=1)
+        df = df.fillna(-1)
+    elif label=="oid":
+        # convert point column to numeric to merge
+        df["point"] = df["point"].astype("int")
+        # convert true, false to numeric
+        df = df * 1
+    return df
+
+
+def drop_cols(df, sf=True, rf=True, tf=True, gf=True, od_oid=True):
+    cols = []
+    if rf == True and tf == True:
+        cols += ["id_x", "name_x", "lat_x", "lng_x", "type_y", "id_y", "name_y", "lat_y", "lng_y",
+                  "timediffavg", "timediffmedian"]
+        df = df.rename(index=str, columns={"type_x": "type"})
+    elif rf:
+        cols += ["id", "id", "name", "lat", "lng"]
+    elif tf:
+        cols += ["id", "name", "lat", "lng", "id", "name", "lat", "lng",
+                  "timediffavg", "timediffmedian"]
+    if od_oid:
+        cols += ["placesid", "panosid", "lat", "lng", "year"]
+    return df.drop(cols, axis=1)
+
+
 if __name__ == '__main__':
-    #sf_df = read_table_as_df("matched_scene_features_ams")
-    #print(list(sf_df))
+    db = create_engine('postgresql://postgres:postgres@localhost/pois')
+    #################
+    # read the data #
+    #################
+    # scene features
+    sf_df = read_table_as_df("matched_agg_scene_features_ams")
+    # object detection features
     od_oid_df = read_table_as_df("matched_agg_od_oid_ams")
-    print(od_oid_df.shape)
-    # convert point column to numeric to merge
-    od_oid_df["point"] = od_oid_df["point"].astype("int")
-    # convert true, false to numeric
-    od_oid_df = od_oid_df * 1
+    od_oid_df = preprocess_df(od_oid_df, "oid")
     # twitter features
     tf_df = read_table_as_df("matched_text_features_10_25_ams")
-    print(tf_df.shape)
     # review features
     rf_df = read_table_as_df("matched_review_features_10_25_ams")
-    print(tf_df.shape)
-
     # google-fsq features
     gf_df = read_table_as_df("matched_gf_features_ams")
-    print(list(gf_df))
-    gf_df = gf_df.drop(["id", "name", "type", "gid", "fid", "Monday", "Tuesday",
-                        "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "fprice"], axis=1)
-    gf_df = gf_df.fillna(-1)
-    # dfs to merge
-    dfs = [rf_df, tf_df, gf_df, od_oid_df]
+    gf_df = preprocess_df(gf_df, "gf")
+
+    # dfs to merge gf_df, , od_oid_df
+    dfs = [sf_df, rf_df, tf_df]
     # merge by reduce
     df = reduce(lambda left, right: pd.merge(left, right, on='point'), dfs)
-    print(df.shape)
-
-    # df = df.drop(["id_x", "name_x", "lat_x", "lng_x", "type_y", "id_y", "name_y", "lat_y", "lng_y",
-    #                "timediffavg", "timediffmedian"], axis=1)
-    df = df.drop(["id_x", "name_x", "lat_x", "lng_x", "type", "type_y", "id_y", "name_y", "lat_y", "lng_y",
-                  "timediffavg", "timediffmedian", "placesid", "panosid", "lat", "lng", "year"], axis=1)
-    print(df.shape)
-
-    # for i in list(df):
-    #     print(i)
-    #
-    # # print(df["price"].unique())
-    # # conv_dict = {'Cheap':1.,  'Moderate':2., 'Expensive':3., 'Very Expensive':4., None:np.nan}
-    # # df = df[[ "type", "checkins", "userscount", "tipcount", "rating", "price", "likescount"]]
-    # df = df[["type", "typeofenvironment", "scene1", "scene2", "scene3", "scene4"]]
-    # print(df["scene1"].unique())
-    # print(df["scene2"].unique())
-    #
-    # # df["price"] = df.price.apply(conv_dict.get)
+    # drop not needed cols
+    df = drop_cols(df, sf=True, rf=True, tf=True, gf=False, od_oid=False)
     df = df.fillna(-1)
-    # #df = df[df["type"] != "nightclub"]
-    train, test = train_test_split(df, test_size=0.2)
-    # train = train.groupby("type")
-    print(train.type_x.value_counts())
-    print(test.type_x.value_counts())
+    # store the df
+    #df.to_sql('matched_data_features_ams', db, index=False)
+    print(list(df))
+    print(df.shape)
+    #show_correlations(df)
 
-    #train = train.apply(lambda x: x.sample(train.size().min()).reset_index(drop=True))
+    ###############
+    # CLASSIFYING #
+    ###############
+    tt_split = 0.2
+    balance_min_class = False
+    smote = True
+    train, test = train_test_split(df, test_size=tt_split)
+    print("####################################################")
+    # balance data - keep minimum number per class
+    # train = train.groupby("type")
+    # train = train.apply(lambda x: x.sample(train.size().min()).reset_index(drop=True))
+
+    print("TRAIN Data")
+    print(train.type.value_counts())
+    print("####################################################")
+    print("TEST Data")
+    print(test.type.value_counts())
+
     # grouped_df = train.groupby('type')
-    # print(train.type.value_counts())
-    trainlabel = pd.DataFrame(train.type_x, columns=["type_x"])
-    testlabel = pd.DataFrame(test.type_x, columns=["type_x"])
-    train = train.drop(["type_x"], axis=1)
-    #
-    # print(test.groupby("type").type.value_counts())
-    #
-    test = test.drop(["type_x"], axis=1)
-    # # random forest
-    #clf = RandomForestClassifier()
-    clf = LinearDiscriminantAnalysis(solver='lsqr', n_components=10)
-    #clf = GaussianNB()
-    #clf = svm.SVC()
-    #clf = linear_model.SGDClassifier()
-    #clf = KNeighborsClassifier(n_neighbors=10)
+    #print(train.type_x.value_counts())
+
+    trainlabel = pd.DataFrame(train.type, columns=["type"])
+    testlabel = pd.DataFrame(test.type, columns=["type"])
+    train = train.drop(["type"], axis=1)
+    test = test.drop(["type"], axis=1)
+
+
+    print("Oversampling....")
+    sm = SMOTE(random_state=42)#, kind="svm")
+    train, trainlabel = sm.fit_sample(train, trainlabel)
+    print("Done!")
+    print("Train Data after SMOTE")
+    print('Resampled dataset shape {}'.format(Counter(trainlabel)))
+
+
+    clf = RandomForestClassifier(n_estimators=100, max_depth=10, max_features=0.9,
+                                 criterion="gini", n_jobs=-1, oob_score=True)
+
+        #,class_weight="balanced") #, random_state=10)
+    # clf_rf2 = RandomForestClassifier(n_estimators=150, max_depth=70, max_features=0.9,
+    #                                 criterion="entropy", n_jobs=-1, oob_score=True)
+    # clf_rf3 = RandomForestClassifier(n_estimators=150, max_depth=30, max_features=0.9,
+    #                                 criterion="gini", n_jobs=-1, oob_score=True)
+    # clf_lda = LinearDiscriminantAnalysis(solver='svd', n_components=150)
+    # # # Create adaboost-decision tree classifer object
+    # clf_ab = AdaBoostClassifier(n_estimators=1000,
+    #                           learning_rate=0.03,
+    #                           random_state=0)
+    # clf_gb = GaussianNB()
+    # clf_svm = svm.SVC()
+    # #clf_sgd = linear_model.SGDClassifier()
+    # clf_nn = KNeighborsClassifier(n_neighbors=10)
     #estimators = 100
     # loss = "exponential"
     # learning = 0.1
     # params = {'n_estimators': estimators, 'max_depth': 3, 'min_samples_split': 2,
     #             'learning_rate': learning, 'loss': loss}
     #
+    # clf = VotingClassifier(estimators=[("lda", clf_rf3), ("rf", clf_rf1),("rf2", clf_rf2)], voting="hard")
+    # #                                   ("ab", clf_ab)], voting="hard")#, ("gb", clf_gb),
+    # # #                                    #("svm", clf_svm), ("nn", clf_nn)], voting="hard")
+    print("Training....")
     clf.fit(train, trainlabel)
+    print("Done...")
     print(clf.classes_)
     print(clf.score(test, testlabel))
     pred = clf.predict(test)
-    #print(confusion_matrix(testlabel, pred, clf.classes_))
+    #print(clf.n_features_)
+    #print(clf.feature_importances_)
+    print(confusion_matrix(testlabel, pred, clf.classes_))
 
