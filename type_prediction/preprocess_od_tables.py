@@ -54,13 +54,12 @@ def aggregate_and_store_od_oid(table, df, db, f):
 
 def aggregate_and_store_scene_features(table, scenes):
     df = read_table_as_df(table)
-    df = df[['point', 'typeofenvironment', 'scene1', 'scene2', 'scene3', 'scene4']]
     # get all the values from those cols
     #cols = pd.unique(df[['scene1', 'scene2', 'scene3', 'scene4']].values.ravel('K'))
     dfs = []
     # create dummy dataframes for each column
     for s in scenes:
-        dfs.append(get_dumies_for_scene(s))
+        dfs.append(get_dumies_for_scene(df, s))
     df = dfs[0]
     # add them
     for i in range(len(scenes)-1):
@@ -71,7 +70,7 @@ def aggregate_and_store_scene_features(table, scenes):
     df.to_sql('matched_agg_scene_features_ams', db, index=False)
 
 
-def get_dumies_for_scene(s):
+def get_dumies_for_scene(df, s):
     df_scene = df[["point", s]]
     df_scene.columns = ["point", "scene"]
     df_scene = pd.get_dummies(df_scene, columns=["scene"], prefix='', prefix_sep='')
