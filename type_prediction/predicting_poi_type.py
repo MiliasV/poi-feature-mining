@@ -55,31 +55,27 @@ def show_correlations(df):
 
 def preprocess_df(df, label):
     if label == "gf":
-        df = df.drop(["id", "name", "type", "gid", "fid", "Monday", "Tuesday",
+        df = df.drop(["id", "name", "gid", "fid", "Monday", "Tuesday",
                             "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "fprice"], axis=1)
         df = df.fillna(-1)
-    elif label=="oid":
+    elif label == "oid":
+        df = df.drop(["placesid", "panosid", "lat", "lng", "year"], axis=1)
         # convert point column to numeric to merge
         df["point"] = df["point"].astype("int")
         # convert true, false to numeric
         df = df * 1
+    elif label == "tf":
+        df = df.drop(["id", "name", "lat", "lng", "id", "name", "lat", "lng",
+                 "timediffavg", "timediffmedian"], axis=1)
+    elif label == "rf":
+        df = df.drop(["id", "name", "lat", "lng"], axis=1)
     return df
 
 
-def drop_cols(df, sf=True, rf=True, tf=True, gf=True, od_oid=True):
-    cols = []
-    if rf == True and tf == True:
-        cols += ["id_x", "name_x", "lat_x", "lng_x", "type_y", "id_y", "name_y", "lat_y", "lng_y",
-                  "timediffavg", "timediffmedian"]
-        df = df.rename(index=str, columns={"type_x": "type"})
-    elif rf:
-        cols += ["id", "id", "name", "lat", "lng"]
-    elif tf:
-        cols += ["id", "name", "lat", "lng", "id", "name", "lat", "lng",
-                  "timediffavg", "timediffmedian"]
-    if od_oid:
-        cols += ["placesid", "panosid", "lat", "lng", "year"]
-    return df.drop(cols, axis=1)
+def keep_one_type_col(dfs):
+    for i in range(len(dfs)-1):
+        dfs[i] = dfs[i].drop(["type"], axis=1)
+    return dfs
 
 
 if __name__ == '__main__':
@@ -94,18 +90,23 @@ if __name__ == '__main__':
     od_oid_df = preprocess_df(od_oid_df, "oid")
     # twitter features
     tf_df = read_table_as_df("matched_text_features_10_25_ams")
+    tf_df = preprocess_df(tf_df, "tf")
+
     # review features
     rf_df = read_table_as_df("matched_review_features_10_25_ams")
+    rf_df = preprocess_df(rf_df, "rf")
+
     # google-fsq features
     gf_df = read_table_as_df("matched_gf_features_ams")
     gf_df = preprocess_df(gf_df, "gf")
 
-    # dfs to merge gf_df, , od_oid_df
-    dfs = [sf_df, rf_df, tf_df]
+    # dfs to merge gf_df sf_df,
+    # tf_df, gf_df, rf_df, od_oid_df, sf_df
+    dfs = [gf_df, tf_df, rf_df, sf_df, od_oid_df]
+    dfs = keep_one_type_col(dfs)
     # merge by reduce
     df = reduce(lambda left, right: pd.merge(left, right, on='point'), dfs)
     # drop not needed cols
-    df = drop_cols(df, sf=True, rf=True, tf=True, gf=False, od_oid=False)
     df = df.fillna(-1)
     # store the df
     #df.to_sql('matched_data_features_ams', db, index=False)
@@ -119,13 +120,14 @@ if __name__ == '__main__':
     tt_split = 0.2
     balance_min_class = False
     smote = True
-    train, test = train_test_split(df, test_size=tt_split)
+    train, test = train_test_split(df, test_size=tt_split)#, random_state=43)
     print("####################################################")
     # balance data - keep minimum number per class
     # train = train.groupby("type")
     # train = train.apply(lambda x: x.sample(train.size().min()).reset_index(drop=True))
 
     print("TRAIN Data")
+    print(train.type)
     print(train.type.value_counts())
     print("####################################################")
     print("TEST Data")
@@ -139,17 +141,15 @@ if __name__ == '__main__':
     train = train.drop(["type"], axis=1)
     test = test.drop(["type"], axis=1)
 
-
     print("Oversampling....")
-    sm = SMOTE(random_state=42)#, kind="svm")
+    sm = SMOTE(kind='svm', out_step=0.2)#random_state=42)#, kind="svm")
     train, trainlabel = sm.fit_sample(train, trainlabel)
     print("Done!")
     print("Train Data after SMOTE")
     print('Resampled dataset shape {}'.format(Counter(trainlabel)))
 
-
-    clf = RandomForestClassifier(n_estimators=100, max_depth=10, max_features=0.9,
-                                 criterion="gini", n_jobs=-1, oob_score=True)
+    clf = RandomForestClassifier(n_estimators=100, max_depth=80, max_features=0.9,
+                                 criterion="gini", n_jobs=-1, oob_score=True)#, random_state=42)
 
         #,class_weight="balanced") #, random_state=10)
     # clf_rf2 = RandomForestClassifier(n_estimators=150, max_depth=70, max_features=0.9,
@@ -182,5 +182,5 @@ if __name__ == '__main__':
     pred = clf.predict(test)
     #print(clf.n_features_)
     #print(clf.feature_importances_)
-    print(confusion_matrix(testlabel, pred, clf.classes_))
+    #print(confusion_matrix(testlabel, pred, clf.classes_))
 
