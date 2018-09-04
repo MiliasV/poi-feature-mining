@@ -52,7 +52,7 @@ def aggregate_and_store_od_oid(table, df, db, f):
     df_new.to_sql(table, db)
 
 
-def aggregate_and_store_scene_features(table, scenes):
+def aggregate_and_store_scene_features(table, store_table, scenes):
     df = read_table_as_df(table)
     # get all the values from those cols
     #cols = pd.unique(df[['scene1', 'scene2', 'scene3', 'scene4']].values.ravel('K'))
@@ -67,7 +67,11 @@ def aggregate_and_store_scene_features(table, scenes):
     # convert column point to numeric
     df["point"] = pd.to_numeric(df["point"])
     df = df.sort_values(by=["point"])
-    df.to_sql('matched_agg_scene_features_ams', db, index=False)
+    # add type column from google-fsq table
+    df_gf = read_table_as_df("matched_gf_features_ams")
+    df_gf = df_gf[["point", "type"]]
+    df_res = pd.merge(df_gf, df, on="point")
+    df_res.to_sql(store_table, db, index=False)
 
 
 def get_dumies_for_scene(df, s):
@@ -85,14 +89,14 @@ if __name__ == '__main__':
     # combine and aggregate:
     # (1) matched_od_oid_ams
     # (2) matched_scene_features_ams
-    df = read_table_as_df("matched_od_oid_ams")
+    #df = read_table_as_df("matched_od_oid_ams")
     db = create_engine('postgresql://postgres:postgres@localhost/pois')
-    aggregate_and_store_od_oid("matched_agg_od_oid_ams", read_table_as_df("matched_od_oid_ams"),
-                               db, aggregation_functions())
+    # aggregate_and_store_od_oid("matched_agg_od_oid_ams", read_table_as_df("matched_od_oid_ams"),
+    #                            db, aggregation_functions())
 
     # aggregate matched_scene_features_ams (+ one hot encoding)
     scenes = ["scene1", "scene2", "scene3", "scene4"]
-    aggregate_and_store_scene_features("matched_scene_features_ams", scenes)
-    #print(df[df["point"]=='5']["scene_parking_lot"])
+    aggregate_and_store_scene_features("matched_scene_features_ams", 'matched_agg_scene_features_ams', scenes)
+
 
 
