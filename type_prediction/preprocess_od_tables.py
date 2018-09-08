@@ -41,12 +41,25 @@ def aggregation_functions():
                              'lat': 'first', 'lng':'first',
                              'year': 'first'
                              }
-    aggregation_functions_sf = {'point': 'first', 'scene1': 'sum'}
+    aggregation_functions_coco = {'point': 'first', 'panosid': 'first', 'type': 'first',
+                                 'person': 'any', 'personcount': 'sum', 'bicycle': 'any', 'bicyclecount': 'sum',
+                                 'car': 'any', 'carcount': 'sum',
+                                 'motorcycle': 'any', 'motorcyclecount': 'sum',
+                                 'train': 'any', 'traincount': 'sum',
+                                 'truck': 'any', 'truckcount': 'sum',
+                                 'trafficlight': 'any', 'trafficlightcount': 'sum',
+                                 'firehydrant': 'any', 'firehydrantcount': 'sum',
+                                 'stopsign': 'any', 'stopsigncount': 'sum',
+                                 'bench': 'any', 'benchcount': 'sum',
+                                 'pottedplant': 'any', 'pottedplantcount': 'sum',
+                                 'lat': 'first', 'lng': 'first',
+                                 'year': 'first'
+                                 }
 
-    return aggregation_functions_oid
+    return aggregation_functions_oid, aggregation_functions_coco
 
 
-def aggregate_and_store_od_oid(table, df, db, f):
+def aggregate_and_store_od(table, df, db, f):
     # aggregate matched_od_oid_ams
     df_new = df.groupby(df['placesid']).aggregate(f)
     df_new.to_sql(table, db)
@@ -89,14 +102,17 @@ if __name__ == '__main__':
     # combine and aggregate:
     # (1) matched_od_oid_ams
     # (2) matched_scene_features_ams
-    #df = read_table_as_df("matched_od_oid_ams")
     db = create_engine('postgresql://postgres:postgres@localhost/pois')
-    # aggregate_and_store_od_oid("matched_agg_od_oid_ams", read_table_as_df("matched_od_oid_ams"),
-    #                            db, aggregation_functions())
-
+    df = read_table_as_df("matched_od_coco_ams")
+    #df = read_table_as_df("matched_od_oid_ams")
+    aggregation_functions_oid, aggregation_functions_coco = aggregation_functions()
+    # aggregate_and_store_od("matched_agg_od_oid_ams", read_table_as_df("matched_od_oid_ams"),
+    #                            db, aggregation_functions_oid)
+    aggregate_and_store_od("matched_agg_od_coco_ams", read_table_as_df("matched_od_coco_ams2"),
+                               db, aggregation_functions_coco)
     # aggregate matched_scene_features_ams (+ one hot encoding)
-    scenes = ["scene1", "scene2", "scene3", "scene4"]
-    aggregate_and_store_scene_features("matched_scene_features_ams", 'matched_agg_scene_features_ams', scenes)
+    #scenes = ["scene1", "scene2", "scene3", "scene4"]
+    #aggregate_and_store_scene_features("matched_scene_features_ams", 'matched_agg_scene_features_ams', scenes)
 
 
 

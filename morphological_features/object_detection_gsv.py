@@ -45,10 +45,10 @@ from object_detection.utils import visualization_utils as vis_util
 # rcnn_nas_coco_2018_01_28 (model with highest mAP but slowest)
 
 # 2) Accurate - 37
-# faster_rcnn_inception_resnet_v2_atrous_coco_2018_01_28 ==> USED ONE (around 10 seconds per image)!
+# faster_rcnn_inception_resnet_v2_atrous_coco_2018_01_28
 
 # 3) Accurate - 32
-# faster_rcnn_resnet101_coco_2018_01_28 (way faster than (2) )
+# faster_rcnn_resnet101_coco_2018_01_28 (way faster than (2) ) USED ONE
 
 # 4) Fastest - 21
 # ssd_mobilenet_v1_coco_2017_11_17
@@ -61,19 +61,19 @@ from object_detection.utils import visualization_utils as vis_util
 # 1) Accurate - 37
 # faster_rcnn_inception_resnet_v2_atrous_oid_2018_01_28
 # 2) Accurate - < 37
-# faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid_2018_01_28
+# faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid_2018_01_28 (one used!!!)
 
 
 ################################
 # VARIABLES DEPENDING ON MODEL #
 ################################
-MODEL_NAME = 'faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid_2018_01_28'
-LABELS = 'oid_bbox_trainable_label_map.pbtxt'
-TABLE = "matched_od_oid_ams2"
-TYPE = "od_oid"
+MODEL_NAME = "faster_rcnn_resnet101_coco_2018_01_28"
+LABELS = 'mscoco_label_map.pbtxt'
+TABLE = "matched_od_coco_ams2"
+TYPE = "od_coco"
 cc_category_ids = [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 13, 15, 64]
 oid_category_ids = [1, 2, 3, 7, 5, 75, 17, 9, 46, 20, 188, 114, 69, 190, 144, 132, 8, 10, 14, 43, 36, ]
-category_ids = oid_category_ids
+category_ids = cc_category_ids
 ####################################################################################
 
 MODEL_FILE = MODEL_NAME + '.tar.gz'
@@ -133,7 +133,7 @@ def load_image_into_numpy_array(image):
 if __name__ == '__main__':
     # Size, in inches, of the output images.
     IMAGE_SIZE = (12, 8)
-    source = "od_oid"
+    source = "coco"
     city = "ams"
     session, ODTable = pois_storing_functions.setup_db(TABLE, "notused", TYPE)
     # selected categories' ids
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     logfile = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_matched.txt"
     last_searched_id = logging_functions.get_last_id_from_logfile(logfile)
     #imgs = postgis_functions.get_photos_from_db("matched_gsv_ams", last_searched_id)#last_searched_id)
-    imgs = postgis_functions.get_photos_for_od("matched_gsv_ams", "matched_od_oid_ams2")
+    imgs = postgis_functions.get_photos_for_od("matched_gsv_ams", TABLE)
 
     # for i in sel_categories:
     #     print('Column("{name}", Numeric),'.format(name=sel_categories[i]["name"].lower().replace(" ", "")))
