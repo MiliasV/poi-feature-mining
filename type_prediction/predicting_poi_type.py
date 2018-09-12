@@ -7,6 +7,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from collections import Counter
 from sqlalchemy import create_engine
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
 
 from sklearn.metrics import accuracy_score, f1_score, precision_score, \
     recall_score, classification_report, confusion_matrix
@@ -17,6 +19,8 @@ from sklearn.model_selection import cross_val_predict
 
 
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.grid_search import GridSearchCV
+
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
@@ -95,6 +99,14 @@ def lda(variables):
     return lda_classifier
 
 
+def svmc(variables):
+    clf_svm = svm.SVC(C=variables["C"], kernel=variables["kernel"], degree=variables["degree"],
+                      probability=variables["probability"], shrinking=variables["shrinking"],
+                      class_weight=variables["class_weight"], gamma=variables["gamma"],
+                       decision_function_shape=variables["decision_function_shape"])
+    return clf_svm
+
+
 def train_classifier(clf, features_train, labels_train):
     clf.fit(features_train, labels_train)
     return clf
@@ -107,7 +119,8 @@ def get_classifier(name_classifier, variables):
                    "nb": naive_bayes,
                    "dt": decision_tree,
                    "lda": lda,
-                   "mv": majority_voting}
+                   "mv": majority_voting,
+                   "svm": svmc}
     return classifiers[name_classifier](variables)
 
 
@@ -139,41 +152,72 @@ def preprocess_df(df, label):
     return df
 
 
-def get_best_parameters_for_rf(train, trainlabel):
+def get_best_parameters_for_clf(clf_name, train, trainlabel):
     le = LabelEncoder()
     le.fit(trainlabel)
     trainlabel = le.transform(trainlabel)
-    # Number of trees in random forest
-    n_estimators = [int(x) for x in np.linspace(start=200, stop=2000, num=10)]
-    # Number of features to consider at every split
-    max_features = ['auto', 'sqrt']
-    # Maximum number of levels in tree
-    max_depth = [int(x) for x in np.linspace(10, 110, num=11)]
-    max_depth.append(None)
-    # Minimum number of samples required to split a node
-    min_samples_split = [2, 5, 10]
-    # Minimum number of samples required at each leaf node
-    min_samples_leaf = [1, 2, 4]
-    # Method of selecting samples for training each tree
-    bootstrap = [True, False]
-    # Create the random grid
-    random_grid = {'n_estimators': n_estimators,
-                   'max_features': max_features,
-                   'max_depth': max_depth,
-                   'min_samples_split': min_samples_split,
-                   'min_samples_leaf': min_samples_leaf,
-                   'bootstrap': bootstrap}
-    # Use the random grid to search for best hyperparameters
-    # First create the base model to tune
-    rf = RandomForestRegressor()
-    # Random search of parameters, using 3 fold cross validation,
-    # search across 100 different combinations, and use all available cores
-    rf_random = RandomizedSearchCV(estimator=rf, param_distributions=random_grid, n_iter=100, cv=3, verbose=2,
+    if clf_name == "rf":
+        # Create the random grid
+        random_grid = {'n_estimators':[int(x) for x in np.linspace(start=200, stop=2000, num=10)],
+                       'max_features': ['auto', 'sqrt'],
+                       'max_depth': [int(x) for x in np.linspace(10, 110, num=11)],
+                       'min_samples_split': [2, 5, 10],
+                       'min_samples_leaf': [1, 2, 4],
+                       'bootstrap': [True, False]}
+        # Use the random grid to search for best hyperparameters
+        # First create the base model to tune
+        n_iter = 100
+        clf = RandomForestClassifier()
+    elif clf_name == "svm":
+        # [0.01, 0.1, 1, 10, 100]
+        # linear
+        n_iter = 32
+        random_grid = {'C': [100], 'kernel': ['rbf'], "shrinking":[True, False],
+                       "class_weight": ["balanced", None], "decision_function_shape":["ov", "ovr"],
+                       "gamma": [0.01, 0.1, 1, 10, 100]}
+        clf = svm.SVC()
+        # Random search of parameters, using 3 fold cross validation,
+        # search across 100 different combinations, and use all available cores
+    clf_random = RandomizedSearchCV(estimator=clf, param_distributions=random_grid, n_iter=n_iter, cv=3, verbose=2,
                                    random_state=42, n_jobs=-1)
     # Fit the random search model
-    rf_random.fit(train, trainlabel)
-    print(rf_random.best_params_)
-    return rf_random
+    clf_random.fit(train, trainlabel)
+    print(clf_random.best_params_)
+    return clf_random
+
+
+def reduce_dimensions(dim, n_comp, train, trainlabel=None):
+    if dim == "pca":
+        pca = PCA(n_components=n_comp)
+        pca.fit(data)
+        return pca
+    elif dim == "lda":
+        lda = LinearDiscriminantAnalysis(n_components=250)
+        lda.fit(train, trainlabel)
+        return lda
+
+
+def visualize_clf_accuracy(results, names, num):
+    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(9, 4))
+    # notch shape box plot
+    bplot2 = axes.boxplot(results,
+                          notch=False,  # notch shape
+                          vert=True,  # vertical box alignment
+                          patch_artist=True,  # fill with color
+                          labels=names)  # will be used to label x-ticks
+    axes.set_title('Classifiers comparison')
+    # fill with colors
+    colors = ['pink', 'lightblue', 'lightgreen', 'red', 'grey', 'yellow', 'black', 'purple', 'brown']
+    colors = colors[0:num]
+
+    for patch, cl in zip(bplot2["boxes"], colors):
+        patch.set(facecolor=cl)
+    # adding horizontal grid lines
+    # for ax in axes:
+    axes.yaxis.grid(True)
+    axes.set_xlabel('Classifiers')
+    axes.set_ylabel('Accuracy')
+    plt.show()
 
 
 def keep_one_type_col(dfs):
@@ -192,7 +236,6 @@ if __name__ == '__main__':
     # object detection features
     od_oid_df = read_table_as_df("matched_agg_od_oid_ams")
     od_oid_df = preprocess_df(od_oid_df, "oid")
-
     #coco
     od_coco_df = read_table_as_df("matched_agg_od_coco_ams")
     od_coco_df = preprocess_df(od_coco_df, "oid")
@@ -227,77 +270,48 @@ if __name__ == '__main__':
     ###############
     # CLASSIFYING #
     ###############
-
+    red_dim = False
     tt_split = 0.2
     balance_min_class = False
     smote = False
     smote_kind = 'regular'#'svm' # regular
     smote_out_step = 0.5
-    cross_val = True
+    cross_val = False
+    scaler = StandardScaler()
+
     # rf, lda, nb,
     if not cross_val:
-        # trainlabel = pd.DataFrame(train.type, columns=["type"])
-        # testlabel = pd.DataFrame(test.type, columns=["type"])
-        # train = train.drop(["type"], axforest soundsis=1)
-        # test = test.drop(["type"], axis=1)
-
         data_labels = pd.DataFrame(df.type, columns=["type"])
         data_features = df.drop(["type"], axis=1)
-
         train, test, trainlabel, testlabel = train_test_split(data_features, data_labels,
                                                                test_size=tt_split, random_state=43)
-
-        print("####################################################")
-        # balance data - keep minimum number per class
-        # train = train.groupby("type")
-        # train = train.apply(lambda x: x.sample(train.size().min()).reset_index(drop=True))
-        #
-        # print("TRAIN Data")
-        # print(train.type)
-        # print(train.type.value_counts())
-        # print("####################################################")
-        # print("TEST Data")
-        # print(test.type.value_counts())
-
-        # grouped_df = train.groupby('type')
-        #print(train.type_x.value_counts())
-
-
-        # Dimensionality Reduction
-        # lda = LinearDiscriminantAnalysis(n_components=250)
-        # lda.fit(train, trainlabel)
-        # train = lda.transform(train)
-        # test = lda.transform(test)
-        # pca = PCA(n_components=370)
-        # pca.fit(train)
-        # train = pca.transform(train)
-        # test = pca.transform(test)
     else:
-        # data_labels = pd.DataFrame(df.type, columns=["type"])
-        # data_features = df.drop(["type"], axis=1)
-        #
-        # train, test, trainlabel, testlabel = train_test_split(data_features, data_labels,
-        #                                                       test_size=tt_split , random_state=43)
-        trainlabel = pd.DataFrame(df.type, columns=["type"])
-        train = df.drop(["type"], axis=1)
-        # print(list(train))
-        # print(list(trainlabel))
-    print("Donee")
-    if smote:    # pca = PCA(n_components=370)
+        if smote:
+            data_labels = pd.DataFrame(df.type, columns=["type"])
+            data_features = df.drop(["type"], axis=1)
+            train, test, trainlabel, testlabel = train_test_split(data_features, data_labels,
+                                                                  test_size=tt_split , random_state=43)
+            train = scaler.fit_transform(train)
+            test = scaler.fit_transform(test)
+        else:
+            trainlabel = pd.DataFrame(df.type, columns=["type"])
+            train = df.drop(["type"], axis=1)
+            train = scaler.fit_transform(train)
+    if smote:
         print("Oversampling....")
         sm = SMOTE(kind=smote_kind, out_step=smote_out_step)#random_state=42)#, kind="svm")
         train, trainlabel = sm.fit_sample(train, trainlabel)
     print("Done!")
-    print("Training classifier")
-    # pca = PCA(n_components=200)
-    # pca.fit(train)
-    # train = pca.transform(train)
-    # test = pca.transform(test)
+
+    if red_dim:
+        print("Dimensionality Reduction!")
+        dim = reduce_dimensions("pca", 200, train)
+        train = dim.transform(train)
+        test = dim.transform(test)
 
     print('Resampled dataset shape {}'.format(Counter(trainlabel)))
-    #r_random = get_best_parameters_for_rf(train, trainlabel)
-    #print(r_random)
-    #print(trainlabel.head())
+    #print("Getting Best Parameters....")
+    #get_best_parameters_for_clf("svm", train, trainlabel)
 
     # Random Forest - set parameters
     # not used -  random_state=42, class_weight="balanced"
@@ -306,45 +320,82 @@ if __name__ == '__main__':
               "class_weight": "balanced"}
     # KNN - set parameters
     knn_var = {"k": 10}
-
     # Gradient Boosting
     gb_var = {'n_estimators': 100, 'max_depth': 3, 'min_samples_split': 2,
               'learning_rate': 0.1, 'loss': "deviance"}
     # LDA
     lda_var = {"solver": "svd", "n_components": 200}
+    # SVM
+    svm_var = {"C": 100, "kernel": "rbf", "degree": 3, "probability": False, "shrinking": False,
+               "class_weight": None, "gamma": "auto", "decision_function_shape": "ovr"}
     # Majority Voting
-    # mv_var = [("rf", get_classifier("rf", rf_var)),
-    #           ("knn", get_classifier("knn", knn_var)),
-    #           ("gb", get_classifier("gb",  gb_var)),
-    #           ("lda", get_classifier("lda",  lda_var))]
+    mv_var = [("rf", get_classifier("rf", rf_var)),
+              ("gb", get_classifier("gb",  gb_var)),
+              ("lda", get_classifier("lda",  lda_var))]
 
-    clf_model = get_classifier("rf", rf_var)
+    models = []
+    # models.append(('SVM', get_classifier("svm", svm_var)))
+    models.append(('ENS', get_classifier("mv", mv_var)))
+    models.append(('RF', get_classifier("rf", rf_var)))
+    models.append(('LDA', get_classifier("lda", lda_var)))
+    # models.append(('KNN', get_classifier("knn", knn_var)))
+    # models.append(('NB', get_classifier("nb", {})))
+    models.append(('gb', get_classifier("gb", gb_var)))
+    scoring = "accuracy"
+    results = []
+    names = []
+    #clf_model = get_classifier("rf", rf_var)
 
     # clf_svm = svm.SVC()
     # #clf_sgd = linear_model.SGDClassifier() #
     print("Training....")
     if cross_val:
-        test_pred = cross_val_predict(clf_model, train, trainlabel,
-                                      cv=StratifiedKFold(n_splits=10, shuffle=True))
-        testlabel = trainlabel
-        scores = cross_val_score(clf_model, train, trainlabel, cv=StratifiedKFold(n_splits=10, shuffle=True))
-        print("Accuracy: {m} (+/- {s}".format(m=scores.mean(), s=scores.std() * 2))
-        #conf_mat = confusion_matrix(y, y_pred)
-        #scores = cross_val_score(clf, train, trainlabel, cv=5)
-        #print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+        nsplits = 5
+        for name, clf_model in models:
+            print("Classifier: ", name)
+            # test_pred = cross_val_predict(clf_model, train, trainlabel,
+            #                               cv=StratifiedKFold(n_splits=10, shuffle=True))
+            #testlabel = trainlabel
+            scores = cross_val_score(clf_model, train, trainlabel,
+                                     cv=StratifiedKFold(n_splits=nsplits, shuffle=True),
+                                     scoring=scoring)
+            print("Accuracy: {m} (+/- {s}".format(m=scores.mean(), s=scores.std() * 2))
+            results.append(scores)
+            print(scores)
+            names.append(name)
+            msg = "%s: %f (%f)" % (name, scores.mean(), scores.std())
+            print(msg)
     else:
-        clf = train_classifier(clf_model, train, trainlabel)
-        #print(clf.classes_)
-        test_pred = clf.predict(test)
+        print("Oversampling....")
+        for name, clf_model in models:
+            res = []
+            for i in range(5):
+                data_labels = pd.DataFrame(df.type, columns=["type"])
+                data_features = df.drop(["type"], axis=1)
+                train, test, trainlabel, testlabel = train_test_split(data_features, data_labels,
+                                                                      test_size=tt_split)#, random_state=43)
+                sm = SMOTE(kind=smote_kind, out_step=smote_out_step)  # random_state=42)#, kind="svm")
+                train, trainlabel = sm.fit_sample(train, trainlabel)
+                print("Classifier: ", name)
+                clf = train_classifier(clf_model, train, trainlabel)
+                test_pred = clf.predict(test)
+                res.append(accuracy_score(testlabel, test_pred))
+                print("ACCURACY SCORE: ", accuracy_score(testlabel, test_pred))
+            names.append(name)
+            results.append(res)
+    print(results)
+    print(names)
+    visualize_clf_accuracy(results, names, len(models))
+
     print("Done...")
-    print("ACCURACY SCORE: ", accuracy_score(testlabel, test_pred))
-    precision, recall, fscore, support = score(testlabel, test_pred)
-    print('precision: {}'.format(precision))
-    print('recall: {}'.format(recall))
-    print('fscore: {}'.format(fscore))
+    # print("ACCURACY SCORE: ", accuracy_score(testlabel, test_pred))
+    # precision, recall, fscore, support = score(testlabel, test_pred)
+    # print('precision: {}'.format(precision))
+    # print('recall: {}'.format(recall))
+    # print('fscore: {}'.format(fscore))
     # print('support: {}'.format(support))
     # print(f1_score(testlabel, test_pred, average="macro"))
     # print(precision_score(testlabel, test_pred, average="macro"))
     # print(recall_score(testlabel, test_pred, average="macro"))
 
-    print(confusion_matrix(testlabel, test_pred))
+    #print(confusion_matrix(testlabel, test_pred))
