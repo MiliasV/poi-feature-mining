@@ -6,7 +6,8 @@ sys.path.append("../../textual_features/")
 import twitter.twitter_config as twitter_config
 import pprint
 import postgis_functions
-import pois_storing_functions
+from pois_storing_functions import setup_db, get_last_id_from_logfile
+
 import tweepy
 import json
 import psycopg2
@@ -111,12 +112,12 @@ if __name__ == '__main__':
     logfile = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_matched.txt"
     while count<1:
         try:
-            last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
+            last_searched_id = get_last_id_from_logfile(logfile)
             #print(last_searched_id)
             #points = postgis_functions.get_pois_from_fsq_db("matched_fsq_ams", last_searched_id)
             points = get_fsq_points_less_tweets_than(2)
-            session, TTable = pois_storing_functions.setup_db("matched_twitter_ams",
-                                                                "twitter_ams_places_count", "twitter")
+            session, TTable = setup_db("matched_twitter_ams",
+                                        "twitter_ams_places_count", "twitter")
             rad = "0.05km"
             since = "2017-01-01"
             until = "2018-12-19"
