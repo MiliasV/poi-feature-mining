@@ -323,7 +323,7 @@ if __name__ == '__main__':
     fpoints = postgis_functions.get_rows_from_id_not_in_table("matched_fsq_ams", store_table, "id")
 
     # ADD processed tweets for lda to db
-    add_processed_lda_text_tweets("matched_twitter_ams")
+    #add_processed_lda_text_tweets("matched_twitter_ams")
     # get processed tweets for lda per language
     print("LOADING Tweets....")
     eng_tweets, nl_tweets = get_processed_lda_tweets_from_db("matched_twitter_ams", load=False)
@@ -335,7 +335,8 @@ if __name__ == '__main__':
     lda_eng_10, lda_nl_10, eng_dict, nl_dict = get_lda_models(eng_tweets, nl_tweets,
                                                         ntopics=num_topics_big, passes=20, load=True, evaluate=False)
 
-    # print(lda_eng.show_topic(topic[0], topn=5))
+    print(lda_eng_5.show_topics(num_topics=10, num_words=5))
+    print(a)
     # for every matched place
     for f in fpoints:
         data = {}
@@ -431,13 +432,13 @@ if __name__ == '__main__':
         #############
         # Add to db #
         #############
-        try:
-            session.add(TFTable(**data))
-            session.commit()
-            print(data["id"], " INSERTED!")
-        except Exception as err:
-            session.rollback()
-            print("# NOT INSERTED: ", err)
+        # try:
+        #     session.add(TFTable(**data))
+        #     session.commit()
+        #     print(data["id"], " INSERTED!")
+        # except Exception as err:
+        #     session.rollback()
+        #     print("# NOT INSERTED: ", err)
         print("############################################################")
 
 

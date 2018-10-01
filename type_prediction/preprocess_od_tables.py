@@ -26,6 +26,7 @@ def aggregation_functions():
                              'houseplant': 'any', 'houseplantcount': 'sum',
                              'flower': 'any', 'flowercount': 'sum',
                              'building': 'any', 'buildingcount': 'sum',
+                             'skyscraper': 'any', 'skyscrapercount': 'sum',
                              'house': 'any', 'housecount': 'sum',
                              'conveniencestore': 'any', 'conveniencestorecount': 'sum',
                              'office': 'any', 'officecount': 'sum',
@@ -103,16 +104,14 @@ if __name__ == '__main__':
     # (1) matched_od_oid_ams
     # (2) matched_scene_features_ams
     db = create_engine('postgresql://postgres:postgres@localhost/pois')
-    df = read_table_as_df("matched_od_coco_ams")
-    #df = read_table_as_df("matched_od_oid_ams")
+    # df = read_table_as_df("matched_od_coco_ams")
+    df = read_table_as_df("matched_od_oid_ams")
     aggregation_functions_oid, aggregation_functions_coco = aggregation_functions()
-    # aggregate_and_store_od("matched_agg_od_oid_ams", read_table_as_df("matched_od_oid_ams"),
-    #                            db, aggregation_functions_oid)
-    aggregate_and_store_od("matched_agg_od_coco_ams", read_table_as_df("matched_od_coco_ams2"),
-                               db, aggregation_functions_coco)
+    aggregate_and_store_od("matched_agg_od_oid_ams2", read_table_as_df("matched_od_oid_ams"),
+                               db, aggregation_functions_oid)
+    # aggregate_and_store_od("matched_agg_od_coco_ams", read_table_as_df("matched_od_coco_ams2"),
+    #                            db, aggregation_functions_coco)
     # aggregate matched_scene_features_ams (+ one hot encoding)
     #scenes = ["scene1", "scene2", "scene3", "scene4"]
     #aggregate_and_store_scene_features("matched_scene_features_ams", 'matched_agg_scene_features_ams', scenes)
-
-
-
+    print("DONE!")

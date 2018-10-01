@@ -446,72 +446,72 @@ def create_text_features_table(engine, table_name,  metadata):
         metadata.create_all()
 
 
-def create_text_features_table2(engine, table_name,  metadata, num_topics_small, num_topics_big):
-    # if table does not exist
-    if not engine.dialect.has_table(engine, table_name):
-        Table(table_name, metadata,
-              Column("id", String, primary_key=True, nullable=False),
-              Column("name", String),
-              Column("point", Numeric),
-              Column("lat", Numeric),
-              Column("lng", Numeric),
-              Column("type", String),
-              Column("timediffavg", Numeric),
-              Column("timediffmedian", Numeric),
-              Column("entweetcount", Numeric),
-              Column("nltweetcount", Numeric),
-              Column("totaltweetcount", Numeric),
-              Column("enwordcount", Numeric),
-              Column("nlwordcount", Numeric),
-              Column("totalwordcount", Numeric),
-              Column("engavgword", Numeric),
-              Column("nlavgword", Numeric),
-              Column("avgword", Numeric),
-              Column("enpolpoly", Numeric),
-              Column("nlpolpoly", Numeric),
-              Column("enpolblob", Numeric),
-              Column("ensubjblob", Numeric),
-              Column("nlpolblob", Numeric),
-              Column("nlsubblob", Numeric),
-              *(Column("topiceng" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
-              *(Column("topicnl" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
-              *(Column("topiceng" + str(num_topics_big) + str(i + 1), String()) for i in range(num_topics_big)),
-              *(Column("topicnl" + str(num_topics_big) + str(i + 1) , String()) for i in range(num_topics_big))
-              )
-        metadata.create_all()
+# def create_text_features_table2(engine, table_name,  metadata, num_topics_small, num_topics_big):
+#     # if table does not exist
+#     if not engine.dialect.has_table(engine, table_name):
+#         Table(table_name, metadata,
+#               Column("id", String, primary_key=True, nullable=False),
+#               Column("name", String),
+#               Column("point", Numeric),
+#               Column("lat", Numeric),
+#               Column("lng", Numeric),
+#               Column("type", String),
+#               Column("timediffavg", Numeric),
+#               Column("timediffmedian", Numeric),
+#               Column("entweetcount", Numeric),
+#               Column("nltweetcount", Numeric),
+#               Column("totaltweetcount", Numeric),
+#               Column("enwordcount", Numeric),
+#               Column("nlwordcount", Numeric),
+#               Column("totalwordcount", Numeric),
+#               Column("engavgword", Numeric),
+#               Column("nlavgword", Numeric),
+#               Column("avgword", Numeric),
+#               Column("enpolpoly", Numeric),
+#               Column("nlpolpoly", Numeric),
+#               Column("enpolblob", Numeric),
+#               Column("ensubjblob", Numeric),
+#               Column("nlpolblob", Numeric),
+#               Column("nlsubblob", Numeric),
+#               *(Column("topiceng" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
+#               *(Column("topicnl" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
+#               *(Column("topiceng" + str(num_topics_big) + str(i + 1), String()) for i in range(num_topics_big)),
+#               *(Column("topicnl" + str(num_topics_big) + str(i + 1) , String()) for i in range(num_topics_big))
+#               )
+#         metadata.create_all()
 
 
-def create_review_features_table2(engine, table_name,  metadata, num_topics_small, num_topics_big):
-    # if table does not exist
-    if not engine.dialect.has_table(engine, table_name):
-        Table(table_name, metadata,
-              Column("id", String, primary_key=True, nullable=False),
-              Column("name", String),
-              Column("point", Numeric),
-              Column("lat", Numeric),
-              Column("lng", Numeric),
-              Column("type", String),
-              Column("enrevcount", Numeric),
-              Column("nlrevcount", Numeric),
-              Column("totalrevcount", Numeric),
-              Column("enwordcount", Numeric),
-              Column("nlwordcount", Numeric),
-              Column("totalwordcount", Numeric),
-              Column("engavgword", Numeric),
-              Column("nlavgword", Numeric),
-              Column("avgword", Numeric),
-              Column("enpolpoly", Numeric),
-              Column("nlpolpoly", Numeric),
-              Column("enpolblob", Numeric),
-              Column("ensubjblob", Numeric),
-              Column("nlpolblob", Numeric),
-              Column("nlsubblob", Numeric),
-              *(Column("topiceng" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
-              *(Column("topicnl" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
-              *(Column("topiceng" + str(num_topics_big) + str(i + 1), String()) for i in range(num_topics_big)),
-              *(Column("topicnl" + str(num_topics_big) + str(i + 1) , String()) for i in range(num_topics_big))
-              )
-        metadata.create_all()
+# def create_review_features_table2(engine, table_name,  metadata, num_topics_small, num_topics_big):
+#     # if table does not exist
+#     if not engine.dialect.has_table(engine, table_name):
+#         Table(table_name, metadata,
+#               Column("id", String, primary_key=True, nullable=False),
+#               Column("name", String),
+#               Column("point", Numeric),
+#               Column("lat", Numeric),
+#               Column("lng", Numeric),
+#               Column("type", String),
+#               Column("enrevcount", Numeric),
+#               Column("nlrevcount", Numeric),
+#               Column("totalrevcount", Numeric),
+#               Column("enwordcount", Numeric),
+#               Column("nlwordcount", Numeric),
+#               Column("totalwordcount", Numeric),
+#               Column("engavgword", Numeric),
+#               Column("nlavgword", Numeric),
+#               Column("avgword", Numeric),
+#               Column("enpolpoly", Numeric),
+#               Column("nlpolpoly", Numeric),
+#               Column("enpolblob", Numeric),
+#               Column("ensubjblob", Numeric),
+#               Column("nlpolblob", Numeric),
+#               Column("nlsubblob", Numeric),
+#               *(Column("topiceng" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
+#               *(Column("topicnl" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
+#               *(Column("topiceng" + str(num_topics_big) + str(i + 1), String()) for i in range(num_topics_big)),
+#               *(Column("topicnl" + str(num_topics_big) + str(i + 1) , String()) for i in range(num_topics_big))
+#               )
+#         metadata.create_all()
 
 def create_review_features_table(engine, table_name, metadata):
     # if table does not exist
@@ -784,3 +784,6 @@ def insert_count_data(session, CTable, poi_number, count_places, count_dupl):
     except Exception as err:
         session.rollback()
         print("# [COUNT] NOT INSERTED: ", err)
+
+if __name__ == '__main__':
+      print("ok")

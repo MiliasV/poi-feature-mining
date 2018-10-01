@@ -223,6 +223,10 @@ if __name__ == '__main__':
     lda_eng_10, lda_nl_10, eng_dict, nl_dict = get_lda_models(eng_rev, nl_rev,
                                                         ntopics=num_topics_big, passes=20, load=True, evaluate=False)
 
+    print(lda_eng_5.show_topics(num_topics=10, num_words=5))
+    #print(lda_eng_10.show_topics(num_topics=25, num_words=5))
+
+    print(a)
     for g in gpoints:
         print(g)
         data = {}
@@ -244,8 +248,7 @@ if __name__ == '__main__':
 
         print("GETTING Topics from ", len(eng_rev_lda) + len(nl_rev_lda), " Reviews: Eng = ",
               len(eng_rev_lda) , ", NL = ", len(nl_rev_lda))
-        #print(lda_eng_5.show_topics(num_topics=5, num_words=5))
-        #print(lda_eng_10.show_topics(num_topics=10, num_words=5))
+
 
         eng_topics_5 = get_topics_from_lda(eng_rev_lda, lda_eng_5, eng_dict, num_topics=num_topics_small)
         nl_topics_5 = get_topics_from_lda(nl_rev_lda, lda_nl_5, nl_dict, num_topics=num_topics_small)
@@ -315,11 +318,11 @@ if __name__ == '__main__':
         #############
         # Add to db #
         #############
-        try:
-            session.add(RTable(**data))
-            session.commit()
-            print(data["name"], " INSERTED!")
-        except Exception as err:
-            session.rollback()
-            print("# NOT INSERTED: ", err)
+        # try:
+        #     session.add(RTable(**data))
+        #     session.commit()
+        #     print(data["name"], " INSERTED!")
+        # except Exception as err:
+        #     session.rollback()
+        #     print("# NOT INSERTED: ", err)
         print("############################################################")

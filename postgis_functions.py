@@ -144,6 +144,16 @@ def get_distance(fpoint, gpoint):
     return c.fetchall()[0]["st_distance_sphere"]
 
 
+def get_place_types_in_radius(fpoint, table, rad):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT type, name FROM {tab} "
+              "WHERE (ST_DWithin(geom::geography, ST_MakePoint({lng},{lat})::geography,{radius}) "
+              "AND id <> '{id}') "
+              "".format(radius=rad, tab=table, lat=fpoint["lat"], lng=fpoint["lng"], id=fpoint["id"]))
+    return c.fetchall()
+
+
 def get_points_from_db(tab, last_searched):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor()
@@ -289,12 +299,12 @@ def get_pois_for_matching(tab, opi):
     return c
 
 
-def get_matching_attr_from_pois_within_radius(table, lng, lat, rad):
+def get_matching_attr_from_pois_within_radius(table, lat, lng, rad):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     c.execute("SELECT * "
               "FROM {geotable} "
-              "WHERE ST_DWithin(geom::geography, ST_MakePoint({lat},{lng})::geography,{rad})"
+              "WHERE ST_DWithin(geom::geography, ST_MakePoint({lng},{lat})::geography,{rad})"
               "ORDER BY originalpointindex"
               .format(geotable=table, lng=lng, lat=lat, rad=rad))
     return c
