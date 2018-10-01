@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 import combine_google_fsq_with_model
 import create_similarities_table
 import pandas as pd
+from romanize import romanize
 errcount = 0
 
 # Match Google & Foursquare POIs for creating ground truth
@@ -165,6 +166,18 @@ def add_matched_to_db(session, FTable, GTable, MTable, fpoint, gpoint, reason):
         session.rollback()
 
 
+def convert_dict_to_latin(d, l):
+    if l == "all":
+        for k, v in d.items():
+            if isinstance(v, str):
+                d[k] = romanize(v)
+    else:
+        for f in l:
+            if d[f]:
+                d[f] = romanize(d[f])
+    return d
+
+
 def model_predictions(clf, prev_predict_prob, fpoint, gpoint):
     sim_dict = create_similarities_table.get_similarities_dict(fpoint, gpoint)
     sim_df = pd.DataFrame.from_dict([sim_dict])
@@ -202,15 +215,16 @@ def print_matched_count(countaddr, countphone, countnamestreet, countwebstreet, 
 
 
 if __name__ == "__main__":
+    city = "ath"
     # choose radius
     #for rad in [275]:
-    fpoints = postgis_functions.get_pois_for_matching("fsq_ams_places", 0)
+    fpoints = postgis_functions.get_pois_for_matching("fsq_" + city + "_places", 0)
     # Create matched tables
-    session, FTable = pois_storing_functions.setup_db("matched_fsq_ams2", "", "fsq_matched")
+    session, FTable = pois_storing_functions.setup_db("matched_fsq_" + city, "", "fsq_matched")
     session.close()
-    session, GTable = pois_storing_functions.setup_db("matched_google_ams2", "", "google_matched")
+    session, GTable = pois_storing_functions.setup_db("matched_google_"+ city, "", "google_matched")
     session.close()
-    session, MTable = pois_storing_functions.setup_db("matched_google_fsq_ams2", "", "matching_table")
+    session, MTable = pois_storing_functions.setup_db("matched_google_fsq_" + city, "", "matching_table")
     rad = 300
     ###############
     # FOR EACH POI#
@@ -230,6 +244,9 @@ if __name__ == "__main__":
     for fpoint in fpoints:
         print_matched_count(countaddr, countphone, countnamestreet, countwebstreet, countwebname, countnamedist)
         #prev_predict_prob = 0
+        # if greek POIs, convert to latin alphabet
+        if city == "ath":
+            fpoint = convert_dict_to_latin(fpoint, "all")
         score = 0
         # if point>253:
         # #     print(fpoint["originalpointindex"])
@@ -241,8 +258,11 @@ if __name__ == "__main__":
         point+=1
         # Gather places within radius
         google_closest_points = postgis_functions.get_matching_attr_from_pois_within_radius\
-             ("google_ams_whole_clipped_40", fpoint["lat"], fpoint["lng"], rad)
+             ("google_" + city + "_whole_clipped_40", fpoint["lat"], fpoint["lng"], rad)
         for gpoint in google_closest_points:
+            # # if greek POIs, convert to latin alphabet
+            if city == "ath":
+                gpoint = convert_dict_to_latin(gpoint, ["name", "streetsrt", "streetlng"])
             # model_predictions(clf, prev_predict_prob, fpoint, gpoint)
             # if prev_predict_prob > 0.8:
             #     print("ADDED TO DB")
@@ -272,6 +292,8 @@ if __name__ == "__main__":
                     countnamestreet+=1
             if match_by_name(fpoint, gpoint, 0.7) and postgis_functions.get_distance(fpoint, gpoint)<=40:
                 if score < 8:
+                    print(fpoint)
+                    print(gpoint)
                     fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "dist_name",  8
                     countnamedist+=1
         if score > 0:

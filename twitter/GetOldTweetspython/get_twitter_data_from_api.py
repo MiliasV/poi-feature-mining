@@ -89,24 +89,36 @@ def log_last_searched_point(logfile, originalpointindex):
         text_file.close()
 
 
-def get_fsq_points_less_tweets_than(num):
+def get_fsq_points_less_tweets_than(num, tab, tab_twitter, random):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("SELECT  * from matched_fsq_ams "
-              "WHERE "
-              "id  in "
-              "(SELECT fsqid from matched_twitter_ams "
-              "GROUP BY fsqid "
-              "having COUNT(*)<{n}) "
-              "OR "
-              "id NOT IN (SELECT fsqid from matched_twitter_ams)"
-              "ORDER BY RANDOM()".format(n=num))
+    if random:
+        c.execute("SELECT  * from {tab} "
+                  "WHERE "
+                  "id  in "
+                  "(SELECT fsqid from {tab_twitter} "
+                  "GROUP BY fsqid "
+                  "having COUNT(*)<{n}) "
+                  "OR "
+                  "id NOT IN (SELECT fsqid from {tab_twitter})"
+                  "ORDER BY RANDOM()".format(n=num, tab=tab, tab_twitter=tab_twitter))
+    else:
+        c.execute("SELECT  * from {tab} "
+                  "WHERE "
+                  "id  in "
+                  "(SELECT fsqid from {tab_twitter} "
+                  "GROUP BY fsqid "
+                  "having COUNT(*)<{n}) "
+                  "OR "
+                  "id NOT IN (SELECT fsqid from {tab_twitter})"
+                  "ORDER BY originalpointindex".format(n=num, tab=tab, tab_twitter=tab_twitter))
+
     return c
 
 
 if __name__ == '__main__':
     api = setup_api()
-    city = "ams"
+    city = "ath"
     source = "twitter"
     count=0
     logfile = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_matched.txt"
@@ -114,10 +126,10 @@ if __name__ == '__main__':
         try:
             last_searched_id = get_last_id_from_logfile(logfile)
             #print(last_searched_id)
-            #points = postgis_functions.get_pois_from_fsq_db("matched_fsq_ams", last_searched_id)
-            points = get_fsq_points_less_tweets_than(2)
-            session, TTable = setup_db("matched_twitter_ams",
-                                        "twitter_ams_places_count", "twitter")
+            points = postgis_functions.get_pois_from_fsq_db("matched_fsq_" + city, last_searched_id)
+            session, TTable = setup_db("matched_twitter_" + city,
+                                        "twitter_" + city + "_places_count", "twitter")
+            #points = get_fsq_points_less_tweets_than(1, "matched_fsq_" + city, "matched_twitter_" + city, random=False)
             rad = "0.05km"
             since = "2017-01-01"
             until = "2018-12-19"
