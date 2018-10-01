@@ -67,10 +67,11 @@ from object_detection.utils import visualization_utils as vis_util
 ################################
 # VARIABLES DEPENDING ON MODEL #
 ################################
-MODEL_NAME = "faster_rcnn_resnet101_coco_2018_01_28"
-LABELS = 'mscoco_label_map.pbtxt'
-TABLE = "matched_od_coco_ams2"
-TYPE = "od_coco"
+MODEL_NAME = "faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid_2018_01_28"
+LABELS = 'oid_bbox_trainable_label_map.pbtxt'
+city = "ath"
+TABLE = "matched_od_oid_" + city
+TYPE = "od_oid"
 cc_category_ids = [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 13, 15, 64]
 oid_category_ids = [1, 2, 3, 7, 5, 75, 17, 9, 46, 20, 188, 114, 69, 190, 144, 132, 8, 10, 14, 43, 36, ]
 category_ids = cc_category_ids
@@ -134,7 +135,6 @@ if __name__ == '__main__':
     # Size, in inches, of the output images.
     IMAGE_SIZE = (12, 8)
     source = "coco"
-    city = "ams"
     session, ODTable = pois_storing_functions.setup_db(TABLE, "notused", TYPE)
     # selected categories' ids
     # cc_categories = ["person", "bicycle", "car", "motorcycle", "bus", "train", "truck",
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     logfile = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_matched.txt"
     last_searched_id = logging_functions.get_last_id_from_logfile(logfile)
     #imgs = postgis_functions.get_photos_from_db("matched_gsv_ams", last_searched_id)#last_searched_id)
-    imgs = postgis_functions.get_photos_for_od("matched_gsv_ams", TABLE)
+    imgs = postgis_functions.get_photos_for_od("matched_gsv_" + city, TABLE)
 
     # for i in sel_categories:
     #     print('Column("{name}", Numeric),'.format(name=sel_categories[i]["name"].lower().replace(" ", "")))
@@ -196,9 +196,9 @@ if __name__ == '__main__':
                         img[sel_categories[cl]["name"].replace(" ","").lower() + "highestprob"] = float(detected_scores[i])
                 #img.pop("rn", None)
                 # get place of image from db
-                gpoint = postgis_functions.get_matchid_by_id("matched_google_ams", img["placesid"])
+                gpoint = postgis_functions.get_matchid_by_id("matched_google_" + city, img["placesid"])
                 # find matched fsq place
-                fplace = postgis_functions.get_matched_poi("matched_fsq_ams", gpoint)
+                fplace = postgis_functions.get_matched_poi("matched_fsq_" + city, gpoint)
                 # get type of place
                 ftype = postgis_functions.get_type_of_place(fplace)
                 img["type"] = ftype
