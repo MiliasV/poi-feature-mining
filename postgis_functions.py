@@ -5,6 +5,16 @@ import psycopg2
 import psycopg2.extras
 
 
+
+def update_column_to_table_by_key(tab, value, column, key_col, key):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("UPDATE {table} "
+              "SET {col}='{v}' "
+              "WHERE {keycol} ='{key}'".format(table=tab, v=value, col=column, keycol=key_col, key=key))
+    conn.commit()
+
+
 def add_type_to_table(tab, colid, value, fid):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -12,6 +22,25 @@ def add_type_to_table(tab, colid, value, fid):
               "SET type='{v}' "
               "WHERE {col} ='{fid}'".format(table=tab, col=colid, v=value, fid=fid))
     conn.commit()
+
+
+def get_matched_placesid_from_fsqid(fsqid, ftable, gtable):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT google.id from {gtable} as google "
+              "INNER JOIN {ftable} as fsq "
+              "on fsq.point=google.point "
+              "WHERE fsq.id='{fid}'".format(gtable=gtable, ftable=ftable, fid=fsqid))
+    return c.fetchall()[0]["id"]
+
+
+def get_feature_not_in_table(table, table_target, feature):
+    conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * from {table} "
+              "WHERE {feature} not in ( "
+              "SELECT {feature} from  {table_target} )".format(table=table, feature=feature, table_target=table_target))
+    return c
 
 
 def get_text_from_tweets(table):
@@ -25,11 +54,13 @@ def add_processed_text_to_table(data, col, table, tweetid):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     print("UPDATING...")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("UPDATE {tab} "
+    try:
+        c.execute("UPDATE {tab} "
               "SET {col}='{v}' "
               "WHERE id ='{tid}'".format(tab=table, col=col, v=data, tid=tweetid))
-    conn.commit()
-
+        conn.commit()
+    except:
+        print("Not UPDATED")
 
 def get_tweets_per_lang_from_fsqid(tab, fsqid, lang):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
@@ -95,7 +126,7 @@ def get_rows_from_table_where_col_is_null(tab, col):
 def get_rows_from_table(tab):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("SELECT * from {table} ".format(table=tab))
+    c.execute("SELECT * from {table}".format(table=tab))
     return c.fetchall()
 
 
@@ -147,9 +178,10 @@ def get_distance(fpoint, gpoint):
 def get_place_types_in_radius(fpoint, table, rad):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("SELECT type, name FROM {tab} "
+    c.execute("SELECT type, COUNT(*) FROM {tab} "
               "WHERE (ST_DWithin(geom::geography, ST_MakePoint({lng},{lat})::geography,{radius}) "
               "AND id <> '{id}') "
+              "GROUP BY type "
               "".format(radius=rad, tab=table, lat=fpoint["lat"], lng=fpoint["lng"], id=fpoint["id"]))
     return c.fetchall()
 
@@ -169,8 +201,8 @@ def get_points_from_db(tab, last_searched):
 def get_google_fsq_features(gtab, ftab):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
     c = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
-    c.execute("SELECT g.id as gid, f.id as fid, g.point, g.name as gname, f.name as fname, "
-              "g.type, g.website as gwebsite, f.website as fwebsite, g.rscount as  grscount,"
+    c.execute("SELECT g.id as gid, f.lat as lat, f.lng as lng, f.id as fid, g.point, g.name as gname, f.name as fname, "
+              "f.type, g.website as gwebsite, f.website as fwebsite, g.rscount as  grscount,"
               " g.phone as gphone, f.phone as fphone, g.rating as grating, f.rating as frating, "
               "g.poptimes as gpoptimes, f.tipcount as ftipcount, f.price as fprice, "
               "f.likescount as flikescount, f.photoscount as fphotoscount, f.facebook as ffacebook, "
@@ -227,13 +259,12 @@ def get_photos_from_db(table, last_inserted):
     return imgs
 
 
-def get_matchid_by_id(table, pid):
+def get_match_by_id(table, pid):
     conn = psycopg2.connect("dbname='pois' user='postgres' host='localhost' password='postgres'")
-    poi = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
-    poi.execute("SELECT * FROM {tab} "
+    c = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * FROM {tab} "
                  "WHERE id='{placeid}'".format(tab=table, placeid=pid))
-    poi = poi.fetchall()[0]
-    return poi["point"]
+    return c.fetchall()
 
 
 def get_matched_poi(table, point):
@@ -247,30 +278,51 @@ def get_matched_poi(table, point):
 
 
 def get_type_of_place(place_dict):
-    if ("Bar" in place_dict["type1"] or "Bar" in place_dict["type2"]):
+
+    # type1
+    if "Bar" in place_dict["type1"]:
         return "bar"
     elif "Restaurant" in place_dict["type1"]:
         return "restaurant"
-    elif ("Café" in place_dict["type1"] or "Cafe" in place_dict["type1"] or
-          "Café" in place_dict["type2"] or "Cafe" in place_dict["type2"]):
+    elif "Café" in place_dict["type1"] or "Cafe" in place_dict["type1"]:
         return "cafe"
+    elif "Clothing Store" in place_dict["type1"]:
+        return "clothing_store"
+    elif "Gym" in place_dict["type1"]:
+        return "gym"
     elif "Art Gallery" in place_dict["type1"]:
-        return "Art Gallery"
-    elif ("Hotel" in place_dict["type1"] or "Hotel" in place_dict["type2"]):
+        return "art_gallery"
+    elif "Hotel" in place_dict["type1"]:
         return "hotel"
-    elif ("Coffee Shop" in place_dict["type1"]):
-        return "coffee shop"
+    elif "Coffee Shop" in place_dict["type1"]:
+        return "coffee_shop"
+    elif "Nightclub" in place_dict["type1"]:
+        return "nightclub"
+    elif "Stripclub" in place_dict["type1"]:
+        return "stripclub"
+    elif "Clothing Store" in place_dict["type1"]:
+        return "clothing_store"
+    # type 2
+    elif "Restaurant" in place_dict["type2"]:
+        return "restaurant"
     elif (("Food" in place_dict["type2"] or "Food" in place_dict["type3"]) and
           ("Shop" in place_dict["type1"] or "Store" in place_dict["type1"] or
            "Shop" in place_dict["type2"] or "Store" in place_dict["type2"])):
         return "food_drink_shop"
-    elif "Nightclub" in place_dict["type1"]:
-        return "nightclub"
-    elif "Stripclub" in place_dict["type1"]:
-        return "Stripclub"
-    elif ("College & University" in place_dict["type2"] or
-        "College & University" in place_dict["type3"]):
+    elif "Bar" in place_dict["type2"]:
+        return "bar"
+    elif "Clothing Store" in place_dict["type2"]:
+        return "clothing_store"
+    elif "Café" in place_dict["type2"] or "Cafe" in place_dict["type2"]:
+        return "cafe"
+    elif "Hotel" in place_dict["type2"]:
+        return "hotel"
+    elif "Gym" in place_dict["type2"]:
+        return "gym"
+    elif ("College" in place_dict["type2"] or
+        "College" in place_dict["type3"]):
         return "college_and_university"
+
     else:
         return False
 
@@ -328,6 +380,7 @@ def connect_to_db():
     conn = psycopg2.connect("dbname='pois' user='postgres' host='localhost' password='postgres'")
     c = conn.cursor()
     return c
+
 
 if __name__ == "__main__":
     # connect to osm db

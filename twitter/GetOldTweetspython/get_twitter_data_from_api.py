@@ -88,6 +88,18 @@ def log_last_searched_point(logfile, originalpointindex):
         text_file.write("Last searched point \n" + str(originalpointindex))
         text_file.close()
 
+# def get_fsq_points_with_no_tweets(fsqtab, tweetab):
+#     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
+#     c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+#     c.execute("SELECT  * from {fsqtab} "
+#               "WHERE "
+#               "id  not in "
+#               "(SELECT fsqid from {tab_twitter} "
+#               " "
+#               "OR "
+#               "id NOT IN (SELECT fsqid from {tab_twitter})"
+#               "ORDER BY RANDOM()".format(n=num, fsqtab=fsqtab, tab_twitter=tab_twitter))
+
 
 def get_fsq_points_less_tweets_than(num, tab, tab_twitter, random):
     conn = psycopg2.connect(database="pois", user="postgres", password="postgres")
@@ -100,7 +112,7 @@ def get_fsq_points_less_tweets_than(num, tab, tab_twitter, random):
                   "GROUP BY fsqid "
                   "having COUNT(*)<{n}) "
                   "OR "
-                  "id NOT IN (SELECT fsqid from {tab_twitter})"
+                  "id NOT IN (SELECT DISTINCT fsqid from {tab_twitter} WHERE year='2017' or year='2018')"
                   "ORDER BY RANDOM()".format(n=num, tab=tab, tab_twitter=tab_twitter))
     else:
         c.execute("SELECT  * from {tab} "
@@ -110,15 +122,15 @@ def get_fsq_points_less_tweets_than(num, tab, tab_twitter, random):
                   "GROUP BY fsqid "
                   "having COUNT(*)<{n}) "
                   "OR "
-                  "id NOT IN (SELECT fsqid from {tab_twitter})"
+                  "id NOT IN (SELECT DISTINCT fsqid from {tab_twitter})"
                   "ORDER BY originalpointindex".format(n=num, tab=tab, tab_twitter=tab_twitter))
 
-    return c
+    return c.fetchall()
 
 
 if __name__ == '__main__':
     api = setup_api()
-    city = "ath"
+    city = "ams"
     source = "twitter"
     count=0
     logfile = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_matched.txt"
@@ -126,16 +138,20 @@ if __name__ == '__main__':
         try:
             last_searched_id = get_last_id_from_logfile(logfile)
             #print(last_searched_id)
-            points = postgis_functions.get_pois_from_fsq_db("matched_fsq_" + city, last_searched_id)
-            session, TTable = setup_db("matched_twitter_" + city,
+            #points = postgis_functions.get_pois_from_fsq_db("matched_fsq_" + city, last_searched_id)
+            session, TTable = setup_db("matched_places_twitter_" + city,
                                         "twitter_" + city + "_places_count", "twitter")
-            #points = get_fsq_points_less_tweets_than(1, "matched_fsq_" + city, "matched_twitter_" + city, random=False)
+            points = get_fsq_points_less_tweets_than(1, "matched_places_fsq_" + city, "matched_places_twitter_" + city, random=True)
             rad = "0.05km"
             since = "2017-01-01"
             until = "2018-12-19"
             # since = "2014-01-01"
             # until = "2016-12-30"
+            count=0
+            print(len(points))
             for fsq in points:
+                count+=1
+                print("COUNT: ", count)
                 log_last_searched_point(logfile, fsq["point"])
                 print("POINT: ", fsq["point"], fsq["id"], fsq["lat"], fsq["lng"])
                 ll = str(fsq["lat"]) + "," + str(fsq["lng"])

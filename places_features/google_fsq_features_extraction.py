@@ -72,27 +72,46 @@ def get_opening_hours_from_json(ohjson, gfdata):
     return gfdata
 
 
+def get_nearby_places(d, types, rad):
+    if types:
+        for t in types:
+            d[t["type"] + "_" + rad] = t["count"]
+    return d
+
+
 if __name__ == '__main__':
     # initializations
     count = 0
+    city = "ath"
     #format_str = "%Y-%m-%d %H:%M:%S"
     #session, GFTable = pois_storing_functions.setup_db("matched_gf_features_ams", "notused", "gf_features")
-    gtab = "matched_google_ams"
-    ftab = "matched_fsq_ams"
+    gtab = "matched_places_google_" + city
+    ftab = "matched_places_fsq_" + city
     # get places
     gfpoints = postgis_functions.get_google_fsq_features(gtab, ftab)
-    session, GFTable = pois_storing_functions.setup_db("matched_gf_features_ams", "notused", "gf")
+    session, GFTable = pois_storing_functions.setup_db("matched_places_gf_features_" + city, "notused", "gf")
 
     #fpoints = postgis_functions.get_rows_from_id_not_in_table("matched_fsq_ams", "matched_text_features_ams", "id")
 
     # selecting what to store in table from the general information from google and fsq
     for gf in gfpoints:
         gfdata = {}
+        # for using the function id is fsq id
+        gf["id"] = gf["fid"]
+        types_100 = postgis_functions.get_place_types_in_radius(gf, "matched_places_fsq_" + city, 100)
+        types_1000 = postgis_functions.get_place_types_in_radius(gf, "matched_places_fsq_" + city, 1000)
+        types_5000 = postgis_functions.get_place_types_in_radius(gf, "matched_places_fsq_" + city, 5000)
+        gfdata = get_nearby_places(gfdata, types_100, "100")
+        gfdata = get_nearby_places(gfdata, types_1000, "1000")
+        gfdata = get_nearby_places(gfdata, types_5000, "5000")
+        # for k in gfdata:
+        #     print('Column("' + k +'", Numeric),')
+        # print(a)
         gfdata["id"] = gf["gid"] + "_" + gf["fid"]
         gfdata["name"] = gf["gname"]
         gfdata["type"] = gf["type"]
         gfdata["point"] = gf["point"]
-        gfdata["gid"] = gf["gid"]
+        gfdata["placesid"] = gf["gid"]
         gfdata["fid"] = gf["fid"]
         gfdata["ghasweb"], gfdata["fhasweb"] = gf_has_attribute(gf, "website")
         gfdata["ghasphone"], gfdata["fhasphone"] = gf_has_attribute(gf, "phone")

@@ -145,9 +145,9 @@ def add_matched_to_db(session, FTable, GTable, MTable, fpoint, gpoint, reason):
     global errcount
     fpoint_for_type = {k: v if v is not None else "" for k, v in fpoint.items()}
 
-    type = postgis_functions.get_type_of_place(fpoint_for_type)
-    fpoint["type"] = type
-    gpoint["type"] = type
+    # type = postgis_functions.get_type_of_place(fpoint_for_type)
+    # fpoint["type"] = type
+    # gpoint["type"] = type
     try:
         session.add(FTable(**fpoint))
         session.add(GTable(**gpoint))
@@ -202,7 +202,7 @@ def model_predictions(clf, prev_predict_prob, fpoint, gpoint):
     return prev_predict_prob, fmatched, gmatched
 
 
-def print_matched_count(countaddr, countphone, countnamestreet, countwebstreet, countwebname, countnamedist):
+def print_matched_count(countaddr, countphone, countnamestreet, countwebstreet, countwebname, countnamedist, count):
     print("#################################################################################")
     print("COUNT (addr): ", countaddr)
     print("COUNT (Phone): ", countphone)
@@ -211,6 +211,7 @@ def print_matched_count(countaddr, countphone, countnamestreet, countwebstreet, 
     print("COUNT (webname): ", countwebname)
     print("COUNT (namedist): ", countnamedist)
     #print("TOTAL: ", count)#countaddr +countphone +countnamestreet + countwebstreet + countwebname + countnamedist)
+    print("COUNT (actual): ", count)
     print("@@@@@@@@@@@@@@@@@@@@@")
 
 
@@ -218,13 +219,16 @@ if __name__ == "__main__":
     city = "ath"
     # choose radius
     #for rad in [275]:
-    fpoints = postgis_functions.get_pois_for_matching("fsq_" + city + "_places", 0)
+
+    fpoints = postgis_functions.get_pois_for_matching("fsq_" + city + "_whole__clipped_40", 0)
+    #fpoints = postgis_functions.get_pois_for_matching("fsq_" + city + "_places", 0)
+
     # Create matched tables
-    session, FTable = pois_storing_functions.setup_db("matched_fsq_" + city, "", "fsq_matched")
+    session, FTable = pois_storing_functions.setup_db("tmatched_places_fsq_" + city, "", "fsq_matched")
     session.close()
-    session, GTable = pois_storing_functions.setup_db("matched_google_"+ city, "", "google_matched")
+    session, GTable = pois_storing_functions.setup_db("tmatched_places_google_"+ city, "", "google_matched")
     session.close()
-    session, MTable = pois_storing_functions.setup_db("matched_google_fsq_" + city, "", "matching_table")
+    session, MTable = pois_storing_functions.setup_db("tmatched_places_google_fsq_" + city, "", "matching_table")
     rad = 300
     ###############
     # FOR EACH POI#
@@ -242,7 +246,7 @@ if __name__ == "__main__":
     count_conflicts=0
     #clf = combine_google_fsq_with_model.get_trained_model("similarities_ams_table")
     for fpoint in fpoints:
-        print_matched_count(countaddr, countphone, countnamestreet, countwebstreet, countwebname, countnamedist)
+        print_matched_count(countaddr, countphone, countnamestreet, countwebstreet, countwebname, countnamedist, count)
         #prev_predict_prob = 0
         # if greek POIs, convert to latin alphabet
         if city == "ath":
@@ -254,6 +258,8 @@ if __name__ == "__main__":
         print("POINT ", point)
         print("COUNT ", count)
         print("Conflicts ", count_conflicts)
+        # if point>1248:
+        #     break
 
         point+=1
         # Gather places within radius
@@ -270,27 +276,29 @@ if __name__ == "__main__":
             #     fmatched["point"] = point
             #     gmatched["point"] = point
             #     add_matched_to_db(session, FTable, GTable, MTable, fmatched, gmatched, "model-0.9")
-            if match_by_website(fpoint, gpoint, 0.8) and match_by_street(fpoint, gpoint, 0.8):
-                if score< 3:
-                    fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "web_street",  3
-                    countwebstreet+=1
+            # if match_by_website(fpoint, gpoint, 0.8) and match_by_street(fpoint, gpoint, 0.8):
+            #     if score< 3:
+            #         fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "web_street",  3
+            #         countwebstreet+=1
                 # Match by phone  (if it exists) (total match!)
-            if match_by_phone(fpoint, gpoint, 1) and match_by_name(fpoint, gpoint, 0.5):
+            if match_by_phone(fpoint, gpoint, 1) and match_by_name(fpoint, gpoint, 0.5) and postgis_functions.get_distance(fpoint, gpoint)<=40:
                 if score < 6:
                     fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "phone_name", 6
+                    print(fmatched)
+                    print(gmatched)
                     countphone += 1
             # match by addr total and name 0.3
             # Remove!!!
-            if match_by_addr(fpoint, gpoint) and match_by_name(fpoint, gpoint, 0.7):
-                if score < 5:
-                    fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "addr_name",  7
-                    countaddr+=1
+            # if match_by_addr(fpoint, gpoint) and match_by_name(fpoint, gpoint, 0.7):
+            #     if score < 5:
+            #         fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "addr_name",  7
+            #         countaddr+=1
             # match by name and street
             if match_by_name(fpoint, gpoint, 0.7) and match_by_street(fpoint, gpoint, 0.8):
                 if score < 7:
                     fmatched, gmatched, reason, score = fpoint.copy(), gpoint.copy(), "street_name",  7
                     countnamestreet+=1
-            if match_by_name(fpoint, gpoint, 0.7) and postgis_functions.get_distance(fpoint, gpoint)<=40:
+            if match_by_name(fpoint, gpoint, 0.7) and postgis_functions.get_distance(fpoint, gpoint)<=50:
                 if score < 8:
                     print(fpoint)
                     print(gpoint)

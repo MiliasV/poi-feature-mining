@@ -68,18 +68,24 @@ if __name__ == '__main__':
     # select tweets or reviews
     source_list = ["tweets", "rev"]
     # select language {en, nl}
-    lang_list = ["nl", "en"]
+    lang_list = ["en","nl"]
+    city = "ath"
     # select table
     for source in source_list:
         if source == "rev":
-            table = "matched_google_reviews_ams"
+            table = "matched_places_google_reviews_" + city
         else:
-            table = "matched_twitter_ams"
+            table = "matched_places_twitter_" +  city
         for lang in lang_list:
             print("Working... Source: " + source + ", Lang: " + lang)
             dict = corpora.Dictionary.load(path + lang + "_dict_" + source + ".pkl")
             term_matrix = corpora.MmCorpus(path + lang + "_term_matrix_" + source + ".mm")
-            text = get_processed_lda_reviews_from_db(table, source, lang, load=False)
+            # text = get_processed_lda_reviews_from_db(table, source, lang, load=False)
+            text = postgis_functions.get_lda_text_per_lang(table,lang)
+            text = [t["processedtextlda"] for t in text if t["processedtextlda"] is not None]
+
+            print(text)
+            # text = [t["processedtextlda"].split() for t in unproc_text]
 
             mallet_path = '/home/bill/Desktop/thesis/packages/mallet-2.0.8/bin/mallet'
             # update this path
@@ -94,6 +100,8 @@ if __name__ == '__main__':
             model_list, coherence_values = compute_coherence_values(dictionary=dict, corpus=term_matrix,
                                                                     texts=text,
                                                                     start=start, limit=limit, step=step)
+            save_with_pickle("model_list_" + source + "_" + city, model_list)
+            save_with_pickle("coherence_" + source + "_" + city, coherence_values)
 
             x = range(start, limit, step)
             # Print the coherence scores
@@ -114,6 +122,6 @@ if __name__ == '__main__':
             plt.xlabel("Num Topics")
             plt.ylabel("Coherence score")
             plt.legend(("coherence_values"), loc='best')
-            plt.savefig("/home/bill/Desktop/thesis/report_images/" +
+            plt.savefig("/home/bill/Desktop/" +
                         lang + "_" + source + "_lda_" + str(step) + "_" + str(limit))
 

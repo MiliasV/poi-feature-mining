@@ -202,7 +202,6 @@ def create_scene_features_table(engine, table_name, metadata):
     if not engine.dialect.has_table(engine, table_name):
         Table(table_name, metadata,
               Column("id", String, primary_key=True, nullable=False),
-              Column("point", String),
               Column("type", String),
               Column("placesid", String),
               Column("panosid", String),
@@ -216,15 +215,27 @@ def create_scene_features_table(engine, table_name, metadata):
               Column("scene3prob", Float),
               Column("scene4", String),
               Column("scene4prob", Float),
-              Column("sceneattr1", String),
-              Column("sceneattr2", String),
-              Column("sceneattr3", String),
-              Column("sceneattr4", String),
-              Column("sceneattr5", String),
-              Column("sceneattr6", String),
-              Column("sceneattr7", String),
-              Column("sceneattr8", String),
-              Column("sceneattr9", String),
+              Column("scene5", String),
+              Column("scene5prob", Float),
+              Column("scene6", String),
+              Column("scene6prob", Float),
+              Column("scene7", String),
+              Column("scene7prob", Float),
+              Column("scene8", String),
+              Column("scene8prob", Float),
+              Column("scene9", String),
+              Column("scene9prob", Float),
+              Column("scene10", String),
+              Column("scene10prob", Float),
+              # Column("sceneattr1", String),
+              # Column("sceneattr2", String),
+              # Column("sceneattr3", String),
+              # Column("sceneattr4", String),
+              # Column("sceneattr5", String),
+              # Column("sceneattr6", String),
+              # Column("sceneattr7", String),
+              # Column("sceneattr8", String),
+              # Column("sceneattr9", String),
               Column("year", Numeric),
               Column("month", Numeric),
               Column("path", String),
@@ -385,68 +396,9 @@ def create_count_per_poi_table(engine, table_name, metadata):
         metadata.create_all()
 
 
-def create_text_features_table(engine, table_name,  metadata):
-    # if table does not exist
-    if not engine.dialect.has_table(engine, table_name):
-        Table(table_name, metadata,
-              Column("id", String, primary_key=True, nullable=False),
-              Column("name", String),
-              Column("point", Numeric),
-              Column("lat", Numeric),
-              Column("lng", Numeric),
-              Column("type", String),
-              Column("timediffavg", Numeric),
-              Column("timediffmedian", Numeric),
-              Column("topiceng51", Numeric),
-              Column("topicnl51", Numeric),
-              Column("topiceng52", Numeric),
-              Column("topicnl52", Numeric),
-              Column("topiceng53", Numeric),
-              Column("topicnl53", Numeric),
-              Column("topiceng54", Numeric),
-              Column("topicnl54", Numeric),
-              Column("topiceng55", Numeric),
-              Column("topicnl55", Numeric),
-              Column("topiceng101", Numeric),
-              Column("topicnl101", Numeric),
-              Column("topiceng102", Numeric),
-              Column("topicnl102", Numeric),
-              Column("topiceng103", Numeric),
-              Column("topicnl103", Numeric),
-              Column("topiceng104", Numeric),
-              Column("topicnl104", Numeric),
-              Column("topiceng105", Numeric),
-              Column("topicnl105", Numeric),
-              Column("topiceng106", Numeric),
-              Column("topicnl106", Numeric),
-              Column("topiceng107", Numeric),
-              Column("topicnl107", Numeric),
-              Column("topiceng108", Numeric),
-              Column("topicnl108", Numeric),
-              Column("topiceng109", Numeric),
-              Column("topicnl109", Numeric),
-              Column("topiceng1010", Numeric),
-              Column("topicnl1010", Numeric),
-              Column("entweetcount", Numeric),
-              Column("nltweetcount", Numeric),
-              Column("totaltweetcount", Numeric),
-              Column("enwordcount", Numeric),
-              Column("nlwordcount", Numeric),
-              Column("totalwordcount", Numeric),
-              Column("engavgword", Numeric),
-              Column("nlavgword", Numeric),
-              Column("avgword", Numeric),
-              Column("enpolpoly", Numeric),
-              Column("nlpolpoly", Numeric),
-              Column("enpolblob", Numeric),
-              Column("ensubjblob", Numeric),
-              Column("nlpolblob", Numeric),
-              Column("nlsubblob", Numeric)
-              )
-        metadata.create_all()
 
-
-# def create_text_features_table2(engine, table_name,  metadata, num_topics_small, num_topics_big):
+#
+# def create_text_features_table(engine, table_name,  metadata, num_topics_small, num_topics_big, lan):
 #     # if table does not exist
 #     if not engine.dialect.has_table(engine, table_name):
 #         Table(table_name, metadata,
@@ -459,57 +411,57 @@ def create_text_features_table(engine, table_name,  metadata):
 #               Column("timediffavg", Numeric),
 #               Column("timediffmedian", Numeric),
 #               Column("entweetcount", Numeric),
-#               Column("nltweetcount", Numeric),
+#               Column(lan + "tweetcount", Numeric),
 #               Column("totaltweetcount", Numeric),
 #               Column("enwordcount", Numeric),
-#               Column("nlwordcount", Numeric),
+#               Column(lan + "wordcount", Numeric),
 #               Column("totalwordcount", Numeric),
 #               Column("engavgword", Numeric),
-#               Column("nlavgword", Numeric),
+#               Column(lan + "avgword", Numeric),
 #               Column("avgword", Numeric),
 #               Column("enpolpoly", Numeric),
-#               Column("nlpolpoly", Numeric),
+#               Column(lan + "polpoly", Numeric),
 #               Column("enpolblob", Numeric),
 #               Column("ensubjblob", Numeric),
-#               Column("nlpolblob", Numeric),
-#               Column("nlsubblob", Numeric),
+#               Column(lan + "polblob", Numeric),
+#               Column(lan + "subblob", Numeric),
 #               *(Column("topiceng" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
-#               *(Column("topicnl" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
+#               *(Column("topic"+ lan + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
 #               *(Column("topiceng" + str(num_topics_big) + str(i + 1), String()) for i in range(num_topics_big)),
-#               *(Column("topicnl" + str(num_topics_big) + str(i + 1) , String()) for i in range(num_topics_big))
+#               *(Column("topic" + lan + str(num_topics_big) + str(i + 1) , String()) for i in range(num_topics_big))
 #               )
 #         metadata.create_all()
 
 
-# def create_review_features_table2(engine, table_name,  metadata, num_topics_small, num_topics_big):
+# def create_review_features_table(engine, table_name,  metadata, num_topics_small, num_topics_big, lan):
 #     # if table does not exist
 #     if not engine.dialect.has_table(engine, table_name):
 #         Table(table_name, metadata,
 #               Column("id", String, primary_key=True, nullable=False),
 #               Column("name", String),
-#               Column("point", Numeric),
+#               Column("placesid", String),
 #               Column("lat", Numeric),
 #               Column("lng", Numeric),
 #               Column("type", String),
 #               Column("enrevcount", Numeric),
-#               Column("nlrevcount", Numeric),
+#               Column(lan + "revcount", Numeric),
 #               Column("totalrevcount", Numeric),
 #               Column("enwordcount", Numeric),
-#               Column("nlwordcount", Numeric),
+#               Column(lan + "wordcount", Numeric),
 #               Column("totalwordcount", Numeric),
 #               Column("engavgword", Numeric),
-#               Column("nlavgword", Numeric),
+#               Column(lan + "avgword", Numeric),
 #               Column("avgword", Numeric),
 #               Column("enpolpoly", Numeric),
-#               Column("nlpolpoly", Numeric),
+#               Column(lan + "polpoly", Numeric),
 #               Column("enpolblob", Numeric),
 #               Column("ensubjblob", Numeric),
-#               Column("nlpolblob", Numeric),
-#               Column("nlsubblob", Numeric),
+#               Column(lan + "polblob", Numeric),
+#               Column(lan + "subblob", Numeric),
 #               *(Column("topiceng" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
-#               *(Column("topicnl" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
+#               *(Column("topic" + lan + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
 #               *(Column("topiceng" + str(num_topics_big) + str(i + 1), String()) for i in range(num_topics_big)),
-#               *(Column("topicnl" + str(num_topics_big) + str(i + 1) , String()) for i in range(num_topics_big))
+#               *(Column("topic" + lan + str(num_topics_big) + str(i + 1) , String()) for i in range(num_topics_big))
 #               )
 #         metadata.create_all()
 
@@ -631,6 +583,39 @@ def create_gf_features_table(engine, table_name, metadata):
               Column("fhasfacebook", Numeric),
               Column("fhastwitter", Numeric),
               Column("ghaspoptimes", Numeric),
+              Column("art_gallery_100", Numeric),
+              Column("bar_100", Numeric),
+              Column("cafe_100", Numeric),
+              Column("clothing_store_100", Numeric),
+              Column("coffee_shop_100", Numeric),
+              Column("college_and_university_100", Numeric),
+              Column("food_drink_shop_100", Numeric),
+              Column("gym_100", Numeric),
+              Column("hotel_100", Numeric),
+              Column("nightclub_100", Numeric),
+              Column("restaurant_100", Numeric),
+              Column("art_gallery_1000", Numeric),
+              Column("bar_1000", Numeric),
+              Column("cafe_1000", Numeric),
+              Column("clothing_store_1000", Numeric),
+              Column("coffee_shop_1000", Numeric),
+              Column("college_and_university_1000", Numeric),
+              Column("food_drink_shop_1000", Numeric),
+              Column("gym_1000", Numeric),
+              Column("hotel_1000", Numeric),
+              Column("nightclub_1000", Numeric),
+              Column("restaurant_1000", Numeric),
+              Column("art_gallery_5000", Numeric),
+              Column("bar_5000", Numeric),
+              Column("cafe_5000", Numeric),
+              Column("clothing_store_5000", Numeric),
+              Column("coffee_shop_5000", Numeric),
+              Column("college_and_university_5000", Numeric),
+              Column("food_drink_shop_5000", Numeric),
+              Column("gym_5000", Numeric),
+              Column("hotel_5000", Numeric),
+              Column("nightclub_5000", Numeric),
+              Column("restaurant_5000", Numeric),
               Column("Monday", String),
               Column("Tuesday", String),
               Column("Wednesday", String),
@@ -661,7 +646,7 @@ def create_reviews_table(engine, table_name, metadata):
     if not engine.dialect.has_table(engine, table_name):
         Table(table_name, metadata,
               Column("id", String, primary_key=True, nullable=False),
-              Column("gid", String),
+              Column("placesid", String),
               Column("name", String),
               Column("type", String),
               Column("point", Numeric),
@@ -728,9 +713,9 @@ def setup_db(pois_table_name, count_table_name, source):
         create_text_features_table(db, pois_table_name, metadata)
     elif source == "similarities":
         create_similarities_table(db, pois_table_name, metadata)
-    elif source == "od_coco":
+    elif source == "coco":
         create_object_detection_coco_table(db, pois_table_name, metadata)
-    elif source == "od_oid":
+    elif source == "oid":
         create_object_detection_oid_table(db, pois_table_name, metadata)
     elif source == "gf":
         create_gf_features_table(db, pois_table_name, metadata)
@@ -741,18 +726,22 @@ def setup_db(pois_table_name, count_table_name, source):
     else:
         print("ERROR, none of the right options were given")
         return 0
-    #create_count_per_poi_table(db, count_table_name, metadata)
-    # reflect the tables
-    Base.prepare(db, reflect=True)
-    STable = getattr(Base.classes, pois_table_name)
+    try:
+      #create_count_per_poi_table(db, count_table_name, metadata)
+      # reflect the tables
+      Base.prepare(db, reflect=True)
+      STable = getattr(Base.classes, pois_table_name)
+    except Exception as err:
+          print("err", err)
     #CTable = getattr(Base.classes, count_table_name)
     #data_table = Table('google_ams_centroids_40', metadata, autoload=True)
+
     # create a Session
     session = Session(db)
     return session, STable #, CTable
 
 
-def setup_db_text(pois_table_name, source, num_topics_small, num_topics_big):
+def setup_db_text(pois_table_name, source, num_topics_small, num_topics_big, lan):
       Base = automap_base()
       # Connect to the database
       db = create_engine('postgresql://postgres:postgres@localhost/pois')
@@ -760,9 +749,9 @@ def setup_db_text(pois_table_name, source, num_topics_small, num_topics_big):
       metadata = MetaData(db)
       # create table if it doesn't exist - also define the table.
       if source == "twitter":
-            create_text_features_table2(db, pois_table_name, metadata, num_topics_small, num_topics_big)
+            create_text_features_table(db, pois_table_name, metadata, num_topics_small, num_topics_big, lan)
       elif source == "reviews":
-            create_review_features_table2(db, pois_table_name, metadata, num_topics_small, num_topics_big)
+            create_review_features_table(db, pois_table_name, metadata, num_topics_small, num_topics_big, lan)
       # reflect the tables
       Base.prepare(db, reflect=True)
       STable = getattr(Base.classes, pois_table_name)

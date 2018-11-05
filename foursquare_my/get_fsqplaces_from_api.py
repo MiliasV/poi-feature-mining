@@ -153,6 +153,7 @@ if __name__ == '__main__':
         # hotel = 4bf58dd8d48988d1fa931735
         # train station = 4bf58dd8d48988d129951735
         # tram station = 52f2ab2ebcbc57f1066b8b51
+
         categories = "4d4b7105d754a06374d81259," \
                      "4d4b7104d754a06370d81259," \
                      "4d4b7105d754a06372d81259," \

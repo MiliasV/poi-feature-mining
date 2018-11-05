@@ -30,17 +30,17 @@ def save_with_pickle(filename, obj):
 
 
 def setup_for_topic_modeling(lang):
-    # initialize lemmatizer
-    lemma = WordNetLemmatizer()
     if lang=="en":
         stop = set(stopwords.words('english'))
     elif lang=="nl":
         stop = set(stopwords.words('dutch'))
+    elif lang=="el":
+        stop = set(stopwords.words("greek"))
     else:
         stop = None
     exclude = set(string.punctuation)
     exclude.add('…')
-    return lemma, stop, exclude
+    return  stop, exclude
 
 
 def clean(doc, stop, exclude, lemma):
@@ -61,31 +61,48 @@ def clean(doc, stop, exclude, lemma):
     return res
 
 
-def get_processed_lda_reviews_from_db(table, load):
+def get_processed_lda_reviews_from_db(table, city, load):
     if load:
-        eng_rev_text = load_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                                        "en_rev_text")
-        nl_rev_text = load_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                                       "nl_rev_text")
-        return eng_rev_text, nl_rev_text
+        eng_rev_text = load_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/en_rev_text")
+        if city == "ams":
+            nl_rev_text = load_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/nl_rev_text")
+            return eng_rev_text, nl_rev_text
+
+        elif city == "ath":
+            el_rev_text = load_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/el_rev_text")
+            return eng_rev_text, el_rev_text
     else:
         eng_rev = postgis_functions.get_lda_text_per_lang(table, "en")
         eng_rev_text = [t["processedtextlda"].split() for t in eng_rev]
-        nl_rev = postgis_functions.get_lda_text_per_lang(table, "nl")
-        nl_rev_text = [t["processedtextlda"].split() for t in nl_rev]
-        # Store reviews
         save_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                          "en_rev_text", eng_rev_text)
-        save_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                         "nl_rev_text", nl_rev_text)
-        return eng_rev_text, nl_rev_text
+        if city == "ams":
+            nl_rev = postgis_functions.get_lda_text_per_lang(table, "nl")
+            nl_rev_text = [t["processedtextlda"].split() for t in nl_rev]
+            save_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                             "nl_rev_text", nl_rev_text)
+            return eng_rev_text, nl_rev_text
+        elif city == "ath":
+            el_rev = postgis_functions.get_lda_text_per_lang(table, "el")
+            el_rev_text = [t["processedtextlda"].split() for t in el_rev]
+            save_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                             "el_rev_text", el_rev_text)
+            return eng_rev_text, el_rev_text
 
 
-def store_google_reviews_and_processed_text():
-    gpoints = postgis_functions.get_rows_from_table("matched_google_ams")
-    session, RTable = pois_storing_functions.setup_db("matched_google_reviews_ams", "notused", "reviews")
-    lemma, eng_stop, eng_exclude = setup_for_topic_modeling("en")
-    lemma, nl_stop, nl_exclude = setup_for_topic_modeling("nl")
+def store_google_reviews_and_processed_text(gtable, target_table, city):
+    #"matched_google_ams"
+    #"matched_google_reviews_ams"
+    gpoints = postgis_functions.get_rows_from_table(gtable)
+    session, RTable = pois_storing_functions.setup_db(target_table, "notused", "reviews")
+    eng_stop, eng_exclude = setup_for_topic_modeling("en")
+
+    if city == "ams":
+        nl_stop, nl_exclude = setup_for_topic_modeling("nl")
+    elif city == "ath":
+        gr_stop, gr_exclude = setup_for_topic_modeling("el")
+    lemma = WordNetLemmatizer()
+
     for g in gpoints:
         rev = {}
         ratings = []
@@ -93,16 +110,19 @@ def store_google_reviews_and_processed_text():
         if "reviews" in gjson:
             for review in gjson["reviews"]:
                 rev["id"] = g["id"] + "_" + review["author_name"]
-                rev["gid"] = g["id"]
+                rev["placesid"] = g["id"]
                 rev["name"] = g["name"]
                 rev["type"] = g["type"]
                 rev["point"] = g["point"]
                 rev["lang"] = review["language"]
+                print(rev["lang"])
                 rev["text"] = review["text"]
                 if rev["lang"] == "en":
-                    rev["processedldatext"] = clean(review["text"], eng_stop, eng_exclude, lemma)
-                elif rev["lang"] == "nl":
-                    rev["processedldatext"] = clean(review["text"], nl_stop, nl_exclude, lemma)
+                    rev["processedtextlda"] = clean(review["text"], eng_stop, eng_exclude, lemma)
+                elif rev["lang"] == "nl" and city=="ams":
+                    rev["processedtextlda"] = clean(review["text"], nl_stop, nl_exclude, lemma)
+                elif rev["lang"] == "el" and city == "ath":
+                    rev["processedtextlda"] = clean(review["text"], gr_stop, gr_exclude, lemma)
 
                 # ratings.append(review["rating"])
                 # rev["avgrating"] = np.mean(ratings)
@@ -122,59 +142,87 @@ def get_perplexity_and_coherence_score(ntopics, lang, corpus,
     ################################################################3
     # checking the models!
     # Compute Perplexity
-    print('\nPerplexity (eng , ', ntopics, ': ', lda_model.log_perplexity(corpus))  # a measure of how good the model is. lower the better.
+    print('\nPerplexity ', lang, 'ntopics, : ', lda_model.log_perplexity(corpus))  # a measure of how good the model is. lower the better.
     # Compute Coherence Score
     coherence_model_lda = CoherenceModel(model=lda_model, texts=doc, dictionary=dict, coherence='c_v')
     coherence_lda = coherence_model_lda.get_coherence()
     print('\nCoherence Score', ntopics, lang, ': ', coherence_lda)
 
 
-def train_lda_models(eng_rev, nl_rev, ntopics, passes):
+def train_lda_models(eng_rev, other_rev, ntopics, passes):
     # Creating the object for LDA model using gensim library
     Lda = gensim.models.ldamodel.LdaModel
     eng_dict = corpora.Dictionary(eng_rev)
-    nl_dict = corpora.Dictionary(nl_rev)
+    other_dict = corpora.Dictionary(other_rev)
     # Convert list of documents (corpus) into Document Term Matrix using dictionary prepared above.
     eng_term_matrix = [eng_dict.doc2bow(doc) for doc in eng_rev]
-    nl_term_matrix = [nl_dict.doc2bow(doc) for doc in nl_rev]
+    other_term_matrix = [other_dict.doc2bow(doc) for doc in other_rev]
     corpora.MmCorpus.serialize("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                                "en_term_matrix_rev.mm", eng_term_matrix)
-    corpora.MmCorpus.serialize("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                               "nl_term_matrix_rev.mm", nl_term_matrix)
+    if city == "ams":
+        corpora.MmCorpus.serialize("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                                   "nl_term_matrix_rev.mm", other_term_matrix)
+    elif city == "ath":
+        corpora.MmCorpus.serialize("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                                   "el_term_matrix_rev.mm", other_term_matrix)
+
     ldamodel_eng = Lda(eng_term_matrix, num_topics=ntopics, id2word=eng_dict, passes=passes)
-    ldamodel_nl = Lda(nl_term_matrix, num_topics=ntopics, id2word=nl_dict, passes=passes)
-    return ldamodel_eng, ldamodel_nl, eng_dict, nl_dict, eng_term_matrix, nl_term_matrix
+    ldamodel_other = Lda(other_term_matrix, num_topics=ntopics, id2word=other_dict, passes=passes)
+    return ldamodel_eng, ldamodel_other, eng_dict, other_dict, eng_term_matrix, other_term_matrix
 
 
-def get_lda_models(eng_rev, nl_rev, ntopics, passes, load, evaluate):
+def get_lda_models(eng_rev, other_rev, ntopics, passes, load, evaluate, city):
     if load:
         eng_dict = corpora.Dictionary.load("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                                            "en_dict_rev.pkl")
-        nl_dict = corpora.Dictionary.load("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                                          "nl_dict_rev.pkl")
         lda_eng = models.LdaModel.load("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                                        "lda_en_rev" + "_" + str(ntopics) + ".model")
-        lda_nl = models.LdaModel.load("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                                      "lda_nl_rev" + "_" + str(ntopics) + ".model")
         eng_term_matrix = corpora.MmCorpus("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                                            "en_term_matrix_rev.mm")
-        nl_term_matrix = corpora.MmCorpus("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                                          "nl_term_matrix_rev.mm")
+        if city == "ams":
+            other_dict = corpora.Dictionary.load("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                                              "nl_dict_rev.pkl")
+            lda_other = models.LdaModel.load("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                                          "lda_nl_rev" + "_" + str(ntopics) + ".model")
+            other_term_matrix = corpora.MmCorpus("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                                              "nl_term_matrix_rev.mm")
+        elif city == "ath":
+            other_dict = corpora.Dictionary.load("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                                              "el_dict_rev.pkl")
+            lda_other = models.LdaModel.load("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                                          "lda_el_rev" + "_" + str(ntopics) + ".model")
+            other_term_matrix = corpora.MmCorpus("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                                              "el_term_matrix_rev.mm")
     else:
         # Train the LDA model
-        lda_eng, lda_nl, eng_dict, nl_dict, eng_term_matrix, nl_term_matrix = train_lda_models(eng_rev, nl_rev, ntopics, passes)
-        lda_eng.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                     "lda_en_rev" + "_" + str(ntopics) + ".model")
-        lda_nl.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                    "lda_nl_rev" + "_" + str(ntopics) + ".model")
-        eng_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                      "en_dict_rev.pkl")
-        nl_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                     "nl_dict_rev.pkl")
+        if city == "ams":
+            lda_eng, lda_other, eng_dict, other_dict, eng_term_matrix, other_term_matrix = train_lda_models(eng_rev, other_rev, ntopics, passes)
+            lda_eng.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                         "lda_en_rev" + "_" + str(ntopics) + ".model")
+            lda_other.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                        "lda_nl_rev" + "_" + str(ntopics) + ".model")
+            eng_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                          "en_dict_rev.pkl")
+            other_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                         "nl_dict_rev.pkl")
+        elif city == "ath":
+            lda_eng, lda_other, eng_dict, other_dict, eng_term_matrix, other_term_matrix = train_lda_models(eng_rev, other_rev, ntopics, passes)
+            lda_eng.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                         "lda_en_rev" + "_" + str(ntopics) + ".model")
+            lda_other.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                        "lda_el_rev" + "_" + str(ntopics) + ".model")
+            eng_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                          "en_dict_rev.pkl")
+            other_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
+                         "el_dict_rev.pkl")
     if evaluate:
         get_perplexity_and_coherence_score(ntopics, "eng", eng_term_matrix, eng_rev, eng_dict, lda_eng)
-        get_perplexity_and_coherence_score(ntopics, "nl", nl_term_matrix, nl_rev, nl_dict, lda_nl)
-    return lda_eng, lda_nl, eng_dict, nl_dict
+        if city == "ams":
+            get_perplexity_and_coherence_score(ntopics, "nl", other_term_matrix, other_rev, other_dict, lda_other)
+        elif city == "ath":
+            get_perplexity_and_coherence_score(ntopics, "el", other_term_matrix, other_rev, other_dict, lda_other)
+
+    return lda_eng, lda_other, eng_dict, other_dict
 
 
 def get_topics_from_lda(obj, model, dict, num_topics):
@@ -204,35 +252,43 @@ def get_topics_from_lda(obj, model, dict, num_topics):
 
 
 if __name__ == '__main__':
+    city = "ams"
+    if city == "ams":
+        lan = "nl"
+    else:
+        lan = "el"
+    gtable = "matched_places_google_" + city
+    rev_table = "matched_places_google_reviews_" + city
     # Store reviews to table and process text for lda
-    # store_google_reviews_and_processed_text()
-    store_table = "matched_review_features_10_25_ams"
+    #store_google_reviews_and_processed_text(gtable, rev_table, city)
+    store_table = "matched_places_review_features_10_25_" + city
     num_topics_small = 10
     num_topics_big = 25
-    session, RTable = pois_storing_functions.setup_db_text(store_table, "reviews",
-                                                            num_topics_small = 10,
-                                                            num_topics_big = 25)
-    gpoints = postgis_functions.get_rows_from_table("matched_google_ams")
-    num_topics = 5
-    eng_rev, nl_rev = get_processed_lda_reviews_from_db("matched_google_reviews_ams", load=True)
+    # session, RTable = pois_storing_functions.setup_db_text(store_table, "reviews",
+    #                                                         num_topics_small = num_topics_small,
+    #                                                         num_topics_big = num_topics_big, lan=lan)
+    gpoints = postgis_functions.get_rows_from_table(gtable)
+    print("LOADING Reviews....")
+    eng_rev, other_rev = get_processed_lda_reviews_from_db(rev_table, city, load=True)
     print("TRAINING Model...")
-
     # train or load models
-    lda_eng_5, lda_nl_5, eng_dict, nl_dict = get_lda_models(eng_rev, nl_rev,
-                                                        ntopics=num_topics_small, passes=20, load=True, evaluate=False)
-    lda_eng_10, lda_nl_10, eng_dict, nl_dict = get_lda_models(eng_rev, nl_rev,
-                                                        ntopics=num_topics_big, passes=20, load=True, evaluate=False)
+    lda_eng_5, lda_other_5, eng_dict, other_dict = get_lda_models(eng_rev, other_rev,
+                                                        ntopics=num_topics_small, passes=20, load=True, evaluate=False,city=city)
+    lda_eng_10, lda_other_10, eng_dict, other_dict = get_lda_models(eng_rev, other_rev,
+                                                        ntopics=num_topics_big, passes=20, load=True, evaluate=False, city=city)
+
 
     print(lda_eng_5.show_topics(num_topics=10, num_words=5))
-    #print(lda_eng_10.show_topics(num_topics=25, num_words=5))
-
+    print(lda_other_5.show_topics(num_topics=10, num_words=5))
+    print(lda_eng_10.show_topics(num_topics=25, num_words=5))
     print(a)
+
     for g in gpoints:
         print(g)
         data = {}
         data["id"] = g["id"]
         data["name"] = g["name"]
-        data["point"] = g["point"]
+        data["placesid"] = g["id"]
         data["lat"] = g["lat"]
         data["lng"] = g["lng"]
         data["type"] = g["type"]
@@ -241,59 +297,67 @@ if __name__ == '__main__':
         # LDA Topic Modeling #
         ######################
         #  get tweets per place per lang
-        eng_rev_lda = postgis_functions.get_col_from_feature_per_lang("matched_google_reviews_ams",
-                                                                      "processedtextlda","gid", g["id"], "en")
-        nl_rev_lda = postgis_functions.get_col_from_feature_per_lang("matched_google_reviews_ams",
-                                                                "processedtextlda", "gid", g["id"], "nl")
+        eng_rev_lda = postgis_functions.get_col_from_feature_per_lang(rev_table, "processedtextlda","placesid", g["id"], "en")
+        if city == "ams":
+            other_rev_lda = postgis_functions.get_col_from_feature_per_lang(rev_table ,
+                                                                         "processedtextlda", "placesid", g["id"], "nl")
+        elif city == "ath":
+            other_rev_lda = postgis_functions.get_col_from_feature_per_lang(rev_table,
+                                                                         "processedtextlda", "placesid", g["id"], "el")
 
-        print("GETTING Topics from ", len(eng_rev_lda) + len(nl_rev_lda), " Reviews: Eng = ",
-              len(eng_rev_lda) , ", NL = ", len(nl_rev_lda))
+        print("GETTING Topics from ", len(eng_rev_lda) + len(other_rev_lda), " Reviews: Eng = ",
+              len(eng_rev_lda) , ", OTHER = ", len(other_rev_lda))
 
 
         eng_topics_5 = get_topics_from_lda(eng_rev_lda, lda_eng_5, eng_dict, num_topics=num_topics_small)
-        nl_topics_5 = get_topics_from_lda(nl_rev_lda, lda_nl_5, nl_dict, num_topics=num_topics_small)
+        other_topics_5 = get_topics_from_lda(other_rev_lda, lda_other_5, other_dict, num_topics=num_topics_small)
 
         eng_topics_10 = get_topics_from_lda(eng_rev_lda, lda_eng_10, eng_dict, num_topics=num_topics_big)
-        nl_topics_10 = get_topics_from_lda(nl_rev_lda, lda_nl_10, nl_dict, num_topics=num_topics_big)
+        other_topics_10 = get_topics_from_lda(other_rev_lda, lda_other_10, other_dict, num_topics=num_topics_big)
 
         for i, val in enumerate(eng_topics_5):
             data["topiceng" + str(num_topics_small) + str(i+1)] = float(eng_topics_5[i])
-            data["topicnl" + str(num_topics_small) + str(i+1)] = float(nl_topics_5[i])
+            data["topic" + lan + str(num_topics_small) + str(i+1)] = float(other_topics_5[i])
         for i, val in enumerate(eng_topics_10):
             data["topiceng" + str(num_topics_big) + str(i+1)] = float(eng_topics_10[i])
-            data["topicnl" + str(num_topics_big) + str(i + 1)] = float(nl_topics_10[i])
+            data["topic" + lan + str(num_topics_big) + str(i + 1)] = float(other_topics_10[i])
 
 
         ####################
         # Review statistics #
         ####################
         # get unprocessed text
-        eng_rev = postgis_functions.get_col_from_feature_per_lang("matched_google_reviews_ams", "text", "gid", g["id"], "en")
-        nl_rev = postgis_functions.get_col_from_feature_per_lang("matched_google_reviews_ams", "text", "gid", g["id"], "nl")
+        eng_rev = postgis_functions.get_col_from_feature_per_lang(rev_table, "text", "placesid", g["id"], "en")
+        if city == "ams":
+            other_rev = postgis_functions.get_col_from_feature_per_lang(rev_table, "text", "placesid", g["id"], "nl")
+        elif city == "ath":
+            other_rev = postgis_functions.get_col_from_feature_per_lang(rev_table, "text", "placesid", g["id"], "el")
+
         # count of reviews
+
         data["enrevcount"] = len(eng_rev)
-        data["nlrevcount"] = len(nl_rev)
-        data["totalrevcount"] = data["enrevcount"] + data["nlrevcount"]
+        data[lan + "revcount"] = len(other_rev)
+        data["totalrevcount"] = data["enrevcount"] + data[lan + "revcount"]
 
         # make reviews a list of tweets
         eng_rev = [x["text"] for x in eng_rev if x["text"]!=""]
-        nl_rev = [x["text"] for x in nl_rev if x["text"]!=""]
+        other_rev = [x["text"] for x in other_rev if x["text"]!=""]
 
         # count of words
         data["enwordcount"] = sum([len(x.split(" ")) for x in eng_rev])
-        data["nlwordcount"] = sum([len(x.split(" ")) for x in nl_rev])
-        data["totalwordcount"] = data["enwordcount"] + data["nlwordcount"]
+        data[lan + "wordcount"] = sum([len(x.split(" ")) for x in other_rev])
+        data["totalwordcount"] = data["enwordcount"] + data[lan + "wordcount"]
 
         # avg. count of words
         if data["enrevcount"]!=0:
             data["engavgword"] = data["enwordcount"] / data["enrevcount"]
         else:
             data["engavgword"] = 0
-        if data["nlrevcount"]!=0:
-            data["nlavgword"] = data["nlwordcount"] / data["nlrevcount"]
+        if data[lan + "revcount"]!=0:
+            data[lan + "avgword"] = data[lan + "wordcount"] / data[lan + "revcount"]
         else:
-            data["nlavgword"] = 0
-        data["avgword"] = (data["engavgword"] + data["nlavgword"]) / 2.0
+            data[lan + "avgword"] = 0
+        data["avgword"] = (data["engavgword"] + data[lan + "avgword"]) / 2.0
 
 
         ######################
@@ -301,19 +365,21 @@ if __name__ == '__main__':
         ######################
         # POLYGLOT
         data["enpolpoly"] = tweet_features_extraction.get_sent_from_polyglot(eng_rev, "en")
-        data["nlpolpoly"] = tweet_features_extraction.get_sent_from_polyglot(nl_rev, "nl")
-
+        if city == "ams":
+            data["nlpolpoly"] = tweet_features_extraction.get_sent_from_polyglot(other_rev, "nl")
+        elif city == "ath":
+            data["elpolpoly"] = tweet_features_extraction.get_sent_from_polyglot(other_rev, "el")
         ############
         # TextBlob #
         ############
         # for english reviews
         data["enpolblob"], data["ensubjblob"] = tweet_features_extraction.get_sent_from_textblob(eng_rev)
         # for dutch tweets translate first
-        if nl_rev:
-            nl_trans_rev = tweet_features_extraction.get_text_trans_in_eng(nl_rev)
-            data["nlpolblob"], data["nlsubblob"] = tweet_features_extraction.get_sent_from_textblob(nl_trans_rev)
+        if other_rev:
+            other_trans_rev = tweet_features_extraction.get_text_trans_in_eng(other_rev)
+            data[lan + "polblob"], data[lan + "subblob"] = tweet_features_extraction.get_sent_from_textblob(other_trans_rev)
         else:
-            data["nlpolblob"], data["nlsubblob"] = None, None
+            data[lan + "polblob"], data[lan + "subblob"] = None, None
         print("############################################################")
         #############
         # Add to db #
