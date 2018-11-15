@@ -13,6 +13,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.metrics import accuracy_score, f1_score, precision_score, \
     recall_score, classification_report, confusion_matrix
 from sklearn.metrics import precision_recall_fscore_support as score
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.decomposition import PCA
 from sklearn.grid_search import GridSearchCV
 from sklearn.ensemble import RandomForestRegressor
@@ -31,6 +32,11 @@ from xgboost import plot_importance
 from xgboost import XGBClassifier
 import xgboost as xgb
 import itertools
+from sklearn.externals.six import StringIO
+from IPython.display import Image
+from sklearn.tree import export_graphviz
+from sklearn import tree
+import pydotplus
 
 
 import pickle
@@ -138,7 +144,7 @@ def plot_confusion_matrix(cm,
         if normalize:
             plt.text(j, i, "{:0.4f}".format(cm[i, j]),
                      horizontalalignment="center",
-                     color="black" if cm[i, j] > thresh else "black")
+                     color="white" if cm[i, j] > 0.75 else "black")
         else:
             plt.text(j, i, "{:,}".format(cm[i, j]),
                      horizontalalignment="center",
@@ -201,8 +207,8 @@ def read_features(city, scene=True, od_oid=True, od_coco=True,
         attr.append("twitter")
     # review features
     if review:
-        # rf_df = read_table_as_df("matched_places_review_features_10_25_" + city)
-        rf_df = read_table_as_df("matched_places_experiential_features_" + city)
+        # rf_df = read_table_as_df("matched_places_review_features_10_25_" + city + "_2")
+        rf_df = read_table_as_df("matched_places_experiential_features_" + city +"_2")
         rf_df = preprocess_df(rf_df, "rf")
         dfs.append(rf_df)
         attr.append("reviews")
@@ -356,7 +362,7 @@ def preprocess_df(df, label):
                      #], axis=1)
         df = df.fillna(0)
     elif label=="spatial":
-        df = df.drop(["point", "name","nightclub_1000", "nightclub_100", "nightclub_5000"], axis=1)
+        df = df.drop(["point", "name","nightclub_1000", "nightclub_100", "nightclub_2000", "nightclub_3000"], axis=1)
         df = df.fillna(0)
 
     elif label == "oid":
@@ -390,13 +396,16 @@ def preprocess_df(df, label):
         #          "timediffavg", "timediffmedian"], axis=1)
     elif label == "rf":
         df = df.drop(["id", "name", "lat", "lng"], axis=1)
+
     return df
 
 
-def get_best_parameters_for_clf(clf_name, train, trainlabel, scoring):
-    le = LabelEncoder()
-    le.fit(trainlabel)
-    trainlabel = le.transform(trainlabel)
+def get_best_parameters_for_clf(clf_name, traindata, trainlabel, scoring):
+    # le = LabelEncoder()
+    # le.fit(trainlabel)
+    # trainlabel = le.transform(trainlabel)
+    train = traindata.copy()
+    train.loc[:, :] = scaler.fit_transform(traindata)
     if clf_name == "rf":
         # Create the random grid
         random_grid = {'n_estimators':[int(x) for x in np.linspace(start=200, stop=2000, num=10)],
@@ -422,6 +431,17 @@ def get_best_parameters_for_clf(clf_name, train, trainlabel, scoring):
         random_grid = {'n_estimators': [100, 200, 300], 'max_depth': [3], 'min_samples_split': [2,3,4],
                   'learning_rate': [0.001, 0.01, 0.1], 'loss': ["deviance"]}
         clf = GradientBoostingClassifier()
+    elif clf_name == "xgb":
+        n_iter = 32
+        # A parameter grid for XGBoost
+        random_grid = {
+            'min_child_weight': [1, 10],
+            'gamma': [0.5, 2, 5],
+            'subsample': [0.6,  1.0],
+            'colsample_bytree': [0.6,  1.0],
+            'max_depth': [3, 5]
+        }
+        clf = XGBClassifier()
 
         # Random search of parameters, using 3 fold cross validation,
         # search across 100 different combinations, and use all available cores
@@ -465,11 +485,11 @@ def visualize_clf_accuracy(score, results, names, num, title, city):
     #axes.yaxis.grid(True)
     axes.yaxis.grid(which="major", color='black', linestyle='-', linewidth=0.4)
     start, end = axes.get_ylim()
-    axes.yaxis.set_ticks(np.arange(round(start, 2), round(end, 2), 0.05))
+    axes.yaxis.set_ticks(np.arange(round(0, 2), round(0.70, 2), 0.05))
     axes.set_xlabel('Classifiers')
-    axes.set_ylabel(score)
+    axes.set_ylabel("F1-score (macro)")
     #plt.show()
-    plt.savefig("/home/bill/Desktop/thesis/Evaluation_results/" + title  + city + ".pdf")
+    plt.savefig("/home/bill/Desktop/thesis/" + title  + city + "ex.pdf")
 
 
 def keep_one_type_col(dfs):
@@ -478,34 +498,30 @@ def keep_one_type_col(dfs):
     return dfs
 
 
-if __name__ == '__main__':
+def plot_dt(clf, names):
+    dot_data = StringIO()
+    tree.export_graphviz(clf, out_file=dot_data, feature_names=names)
+    graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
+    graph.write_pdf("/home/bill/Desktop/dtree_2.pdf")
+    # export_graphviz(dtree, out_file=dot_data,
+    #                 filled=True, rounded=True,
+    #                 special_characters=True)
+    # graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
+    # img = Image(graph.create_png())
 
-    # scoring = "f1_macro"
-    # city = "ath"
-    #
-    # results = load_with_pickle("f_score_all_results")
-    # names = load_with_pickle("f_score_all_names")
-    # len = load_with_pickle("f_score_all_len_models")
-    # title = load_with_pickle("f_score_all_title")
-    # visualize_clf_accuracy(scoring, results, names, len, title, city)
-    # print(a)
-    # db = create_engine('postgresql://postgres:postgres@localhost/pois')
 
-    ##########################
-    # SETTING CLF PARAMETERS #
-    ##########################
+def vis_boxplot_clfs(scoring, city):
+    results = load_with_pickle("f_score_results_set_A_2_gf_spatial_scene_oid_coco_twitter_reviews_rem_nightclub_" + city)
+    names = load_with_pickle("f_score_names_set_A_2_gf_spatial_scene_oid_coco_twitter_reviews_rem_nightclub_" + city)
+    len = load_with_pickle("f_score_len_models_set_A_2_gf_spatial_scene_oid_coco_twitter_reviews_rem_nightclub_" + city)
+    title = load_with_pickle("f_score_title_set_A_2_gf_spatial_scene_oid_coco_twitter_reviews_rem_nightclub_" + city)
+    visualize_clf_accuracy(scoring, results, names, len, title, city)
+
+
+def set_clf_parameters(data_labels):
     # Random Forest - 400
     rf_var = {"n_estimators": 400, "max_depth": None, "max_features": "sqrt", "min_samples_split": 2,
           "min_samples_leaf":1, "criterion": "gini", "n_jobs": -1, "oob_score": False, "bootstrap":False,
-              "class_weight": "balanced"}
-    rf_var2 = {"n_estimators": 500, "max_depth": None, "max_features": "sqrt", "min_samples_split": 2,
-          "min_samples_leaf":1, "criterion": "gini", "n_jobs": -1, "oob_score": False, "bootstrap":False,
-              "class_weight": "balanced"}
-    rf_var3 = {"n_estimators": 400, "max_depth": None, "max_features": "sqrt", "min_samples_split": 2,
-          "min_samples_leaf":1, "criterion": "gini", "n_jobs": -1, "oob_score": True, "bootstrap":True,
-              "class_weight": "balanced"}
-    rf_var4 = {"n_estimators": 300, "max_depth": None, "max_features": "sqrt", "min_samples_split": 2,
-          "min_samples_leaf":1, "criterion": "gini", "n_jobs": -1, "oob_score": False, "bootstrap":True,
               "class_weight": "balanced"}
     # KNN
     knn_var = {"n_neighbors": 10}
@@ -519,8 +535,109 @@ if __name__ == '__main__':
                "class_weight": None, "gamma": "auto", "decision_function_shape": "ovr"}
     # Adaboost
     ada_var = {'base_estimator': get_classifier("rf", rf_var), 'n_estimators': 300, 'algorithm': "SAMME.R", 'learning_rate': 0.01}
-
     # XGBoost
+    sw = compute_sample_weight(class_weight='balanced', y=data_labels)
+    xgb_var = {"sample_weight": sw, 'subsample': 1, 'min_child_weight': 1, 'max_depth': 5, 'gamma': 2,
+               'colsample_bytree': 0.6}
+    # Ensemble - Majority Voting
+    mv_var = [("rf", get_classifier("rf", rf_var)),
+              ("lda", get_classifier("lda", lda_var)),
+              ("svm", get_classifier("svm", svm_var)),
+              ("xgb", get_classifier("xgb", xgb_var))
+              # ("svm", get_classifier("svm", svm_var))
+              ]  ##,
+    nb_var = {}
+    return rf_var, knn_var, lda_var, svm_var, xgb_var, mv_var, gb_var, ada_var, nb_var
+
+
+def rename_features_for_plot(city, data):
+    if city == "ath":
+        data.rename(index={
+            "day6open": "Sunday (Open Time)",
+            "day2close": "Wednesday (Open Time)",
+            "Saturday": "Saturday (PopTimes)",
+            "Sunday": "Sunday (PopTimes)",
+            "day4close": "Friday (Close Time)",
+            "day3close": "Thursday (Close Time)",
+            "day3open": "Thursday (Open Time)",
+
+            "day6close": "Sunday (Close Time)",
+            "cafe_1000": "# of nearby Cafe (radius = 1km)",
+            "clothing_store_100": "# of nearby Cloth. Stores (radius = 1km)",
+
+            "topiceng1010_y": "Topic (10th): 'Gym' \n (Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng105_y": "Topic (5th): 'Hotel' \n (Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng104_y": "Topic (4th): 'Food Place' \n (Source: Reviews, Lang: Eng., Method: LDA)",
+
+            "topiceng259_y": "Topic (9th): 'Food/Wine' \n (Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng2511_y": "Topic (11th): 'Food Place' \n (Source: Reviews, Lang: Eng., Method: LDA)",
+
+        }, inplace=True)
+    else:
+        data.rename(index={
+            "Saturday": "Saturday (PopTimes)",
+           "clothing_store_100": "# of nearby Cloth. Stores (radius = 100m)",
+           'bar_1000': "# of nearby Bars (radius = 1km)",
+           "day4open": "Friday (Open Time)",
+           "day5open": "Saturday (Open Time)",
+           "day5close": "Saturday (Close Time)",
+           "day0close": "Monday (Close Time)",
+           "day2open": "Wednesday (Open Time)",
+           "engavgword_y": "# Words in Eng. Reviews (Avg.)",
+           "day6close": "Sunday (Close Time)",
+           "topiceng2511_y": "Topic (11th): 'Restaraunt/Pizza' \n (Source: Reviews, Lang: Eng., Method: LDA)",
+           "topiceng2521_y": "Topic (21th): 'Food Place' \n (Source: Reviews, Lang: Eng., Method: LDA)",
+           "enwordcount_y": "# of Words in Eng. Reviews (Sum)",
+           "totaltweetcount": "# of Tweets (Sum)",
+           "enrevcount": "# of Eng. Reviews (Sum)",
+           "totalwordcount_y": "# Words in all Reviews",
+           "topiceng104_y": "Topic (4th): 'Meat & Wine' \n (Source: Reviews, Lang: Eng., Method: LDA)",
+           # "topiceng105_y": "Topic (5th): 'Service Place'    \n (Source: Reviews, Lang: Eng., Method: LDA)",
+
+           }, inplace=True)
+    return data
+
+
+def get_xgb_feature_importances(clf_model, train, trainlabel):
+    clf_trained = train_classifier(clf_model, train, trainlabel)
+    get_xgb_feat_importances(clf_model)
+    feature_important = clf_trained.get_booster().get_score(importance_type='gain')
+    keys = list(feature_important.keys())
+    values = list(feature_important.values())
+    data = pd.DataFrame(data=values, index=keys, columns=["score"]).sort_values(by="score", ascending=False).head(
+        features_num)
+    # print(data.head())
+    # data = rename_features_for_plot(city, data)
+    data.plot(kind='barh', grid=True, fontsize=16, legend="Importance Score")
+    plt.show()
+
+
+def write_results_to_file(name, city, attr, testlabel, test_pred, precision, recall, fscore):
+    file = open(name, "a")
+    file.write("city=  {city} , Set B  attr=   {attr}  acc=  {acc} precision = "
+               " {precision}  recall = {recall} fscore = {fscore} \n".format(city=city, attr=attr,
+                                                                             acc=accuracy_score(testlabel, test_pred),
+                                                                             precision=precision, recall=recall,
+                                                                             fscore=fscore))
+    file.close()
+
+
+def print_results(city, attr, scoring_2, name, testlabel, test_pred, precision, recall, fscore,  support):
+    print("CITY: ", city, " Attr.", attr)
+    print("CLASSIFIER - ", scoring_2, " :", name)
+    print("ACCURACY SCORE: ", accuracy_score(testlabel, test_pred))
+    print('precision: {}'.format(precision))
+    print('recall: {}'.format(recall))
+    print('fscore: {}'.format(fscore))
+    print('support: {}'.format(support))
+
+
+
+if __name__ == '__main__':
+    # scoring = "f1_macro"
+    # city = "ams_centre"
+    # vis_boxplot_clfs(scoring, city)
+    # db = create_engine('postgresql://postgres:postgres@localhost/pois')
 
     ############################
     # SETTING OTHER PARAMETERS #
@@ -536,311 +653,223 @@ if __name__ == '__main__':
     smote_out_step = 0.5
     cross_val = True
     scaler = StandardScaler()
-    # scaler = MinMaxScaler()
-
+    feature_set_list = ["all"]  #""scene", "social", "exp", "funct", "spatial", "all"]:
     #################
     # read the data #
     #################
     # area of Amsterdam equal to Athens
     # lat < 52.38524 AND lat > 52.34757 and lng > 4.84067 and lng < 4.91946
-    city = "ams_centre"
+    city = "ath"
     features_num = 15
-    df, attr = read_features(city, scene=True, od_oid=True, od_coco=True,
-                       twitter=True, review=True, gf=True, spatial=True)
+    for i in feature_set_list:
+        if i=="scene":
+            df, attr = read_features(city, scene=True, od_oid=True, od_coco=True,
+                               twitter=False, review=False, gf=False, spatial=False)
+        elif i=="social":
+            df, attr = read_features(city, scene=False, od_oid=False, od_coco=False,
+                               twitter=True, review=False, gf=False, spatial=False)
+        elif i=="exp":
+            df, attr = read_features(city, scene=False, od_oid=False, od_coco=False,
+                               twitter=False, review=True, gf=False, spatial=False)
+        elif i=="funct":
+            df, attr = read_features(city, scene=False, od_oid=False, od_coco=False,
+                               twitter=False, review=False, gf=True, spatial=False)
+        elif i=="spatial":
+            df, attr = read_features(city, scene=False, od_oid=False, od_coco=False,
+                               twitter=False, review=False, gf=False, spatial=True)
+        elif i=="all":
+            df, attr = read_features(city, scene=True, od_oid=True, od_coco=True,
+                               twitter=True, review=True, gf=True, spatial=True)
 
-    data_labels = pd.DataFrame(df.type, columns=["type"])
+        ########################
+        # Selecting the labels #
+        #######################
+        # All labels
+        labels = ["restaurant", "bar", "hotel",
+                  "food_drink_shop", "cafe",
+                  "college_and_university",
+                  "art_gallery", "coffee_shop",
+                  "clothing_store", "nightclub", "gym"
+                  ]
+        title_lab = "set_A"
+        # Remove labels
+        rem_labels = ["nightclub"]  # ["nightclub", "gym"]
+        labels = [x for x in labels if x not in rem_labels]
+        for rem_type in rem_labels:
+            df = df[df.type != rem_type]
 
-    sw = compute_sample_weight(class_weight='balanced', y=data_labels)
-    # print(sw[0:10])
-    # print(data_labels)
-    xgb_var = {"sample_weight":sw}
-    # Ensemble - Majority Voting
-    mv_var = [("rf", get_classifier("rf", rf_var)),
-              ("lda", get_classifier("lda", lda_var)),
-              ("svm", get_classifier("svm", svm_var)),
-              ("xgb", get_classifier("xgb", xgb_var))
-              #("svm", get_classifier("svm", svm_var))
-              ]  ##,
-    ######################
-    # GETTING THE MODELS #
-    ######################
-    models = get_clf_models(svm_var, mv_var, rf_var, lda_var, knn_var, gb_var, ada_var,
-                            svm=False, ens=False, rf=False, lda=False,
-                            knn=False, nb=False, gb=False, ada=False, xgb=True)
+        # Change Labels
+        change_lab = ["None"]  # [("bar", "cafe")]#[("bar", "cafe")]
+        change_lab = [("college_and_university", "coll & uni"),
+                      ("food_drink_shop", "food/drink shop"),
+                      ("restaurant", "restaurant"),
+                      ("art_gallery", "art gallery"),
+                      ("coffee_shop", "coffee shop"),
+                      ("clothing_store", "clothing store"),
+                      ("gym", "gym"),
+                      ("bar", "bar"),
+                      ("hotel", "hotel"),
+                      ("cafe", "cafe")
+                      ]
 
-    labels = ["restaurant", "bar", "hotel",
-     "food_drink_shop", "cafe",
-     "college_and_university",
-      "art_gallery", "coffee_shop",
-     "clothing_store", "nightclub", "gym"
-     ]
-    title_lab = "set_A"
-    rem_labels = ["nightclub"]#["nightclub", "gym"]
-    labels = [x for x in labels if x not in rem_labels]
-    change_lab = ["None"]#[("bar", "cafe")]#[("bar", "cafe")]
-    # change_lab = [("college_and_university", "coll & uni"),
-    #               ("food_drink_shop", "food/drink shop")]
-    # change_lab = [("clothing_store", "shop_and_service"),
-    #               ("food_drink_shop", "food"),
-    #               ("coffee_shop", "food"),
-    #               ("bar", "nightlife_spot"),
-    #               # ("nightclub", "nightlife_spot"),
-    #               ("restaurant", "food"),
-    #               ("cafe", "food"),
-    #               ("hotel", "travel_transport"),
-    #               ("art_gallery","arts_and_entertainment"),
-    #               ("college_and_university", "college_and_university"),
-    #               ("gym", "outdoor_and_recreation")
-    #               ]
-    for rem_type in rem_labels:
-        df = df[df.type != rem_type]
-    for type_tuple in change_lab:
-        df.loc[df['type'] == type_tuple[0], 'type'] = type_tuple[1]
-    labels = [x for x in labels if x not in rem_labels]
-    if change_lab[0]!="None":
-        labels =list(set([y for (x,y) in change_lab if x in labels]))
-    # labels = ["restaurant", "bar", "hotel",
-    #  "food/drink shop", "cafe",
-    #  "coll & uni",
-    #   "art_gallery", "coffee_shop",
-    #  "clothing_store", "gym"
-    #  ]
-    # print(labels)
-    print(df.type.value_counts())
-    print(df.shape)
-    # remove unwanted labels
-    #df.loc[df['type'] == "cafe", 'type'] = "bar"
-    # df.loc[df['type'] == "nightclub", 'type'] = "bar"
+        # change_lab = [("clothing_store", "shop_and_service"),
+        #               ("food_drink_shop", "food"),
+        #               ("coffee_shop", "food"),
+        #               ("bar", "nightlife_spot"),
+        #               # ("nightclub", "nightlife_spot"),
+        #               ("restaurant", "food"),
+        #               ("cafe", "food"),
+        #               ("hotel", "travel_transport"),
+        #               ("art_gallery","arts_and_entertainment"),
+        #               ("college_and_university", "college_and_university"),
+        #               ("gym", "outdoor_and_recreation")
+        #               ]
 
-    # df.loc[df['type'] == "cafe", 'type'] = "restaurant"
-    # df.loc[df['type'] == "bar", 'type'] = "restaurant"
-    #df.loc[df['type'] == "coffee shop", 'type'] = "cafe"
-    # df.loc[df['type'] == "nightclub", 'type'] = "restaurant"
-    #
-    # df.loc[df['type'] == "Art Gallery", 'type'] = "hotel"
-    #
-    # df.loc[df['type'] == "college_and_university", 'type'] = "hotel"
-    #
-    # df.loc[df['type'] == "food_drink_shop", 'type'] = "hotel"
-    # df.loc[df['type'] == "food_drink_shop", 'type'] = "hotel"
+        for type_tuple in change_lab:
+            df.loc[df['type'] == type_tuple[0], 'type'] = type_tuple[1]
+        labels = [x for x in labels if x not in rem_labels]
+        if change_lab[0] != "None":
+            labels = list(set([y for (x, y) in change_lab if x in labels]))
+
+        data_labels = pd.DataFrame(df.type, columns=["type"])
+        data_features = df.drop(["type"], axis=1)
+        print(df.type.value_counts())
+        print(df.shape)
+
+        ##########################
+        # SETTING CLF PARAMETERS #
+        ##########################
+        rf_var, knn_var, lda_var, svm_var, xgb_var, mv_var, gb_var, ada_var, nb_var = set_clf_parameters(data_labels)
+
+        ######################
+        # GETTING THE MODELS #
+        ######################
+        models = get_clf_models(svm_var, mv_var, rf_var, lda_var, knn_var, gb_var, ada_var,
+                                svm=False, ens=False, rf=False, lda=False,
+                                knn=False, nb=False, gb=False, ada=False, xgb=True)
+        ###############
+        # CLASSIFYING #
+        ###############
+
+        # Classifying
+        results = []
+        names = []
+        print("Training....")
+
+        classes = list(data_labels["type"].unique())
+        classes.sort()
+        classes = {k: v for k, v in enumerate(classes)}
+        print(classes)
+
+        #####################################
+        # GRID SEARCHING FOR CLF PARAMETERS #
+        #####################################
+        # print("Getting Best Parameters....")
+        # get_best_parameters_for_clf("xgb", data_features, data_labels, scoring="f1_macro")
+        # print(a)
+        if red_dim:
+            print("Dimensionality Reduction!")
+            dim = reduce_dimensions("pca", 200, data_features)
+            data_features = dim.transform(data_features)
+            #test = dim.transform(test)
+        if cross_val:
+            print("CROSS VAL")
+            nsplits = 10
+            trainlabel = data_labels
+            train = data_features.copy()
+
+            train.loc[:, :] = scaler.fit_transform(data_features)
+            for name, clf_model in models:
+                print("Classifier RUNNING: ", name)
+                testlabel = trainlabel
+                #########################################
+                # get scores for classifiers comparison #
+                #########################################
+                # scores = cross_val_score(clf_model, train, trainlabel.values.ravel(),
+                #                          cv=StratifiedKFold(n_splits=nsplits, shuffle=True),
+                #                          scoring=scoring, verbose=3)
+                # results.append(scores)
+                # names.append(name)
 
 
+                ###############################
+                # Get XGB Feature Importances #
+                ###############################
+                # get_xgb_feature_importances(clf_model, train, trainlabel)
+                # for plotting decision tree ########################################
+                # clf_trained = train_classifier(clf_model,train, trainlabel)
+                # plot_dt(clf_trained, list(train))
 
-    #df = df[df.type!="gym"]
-    # df = df[df.type!="nightclub"]
-    # df = df[df.type!="hotel"]
-    # df = df[df.type!="food_drink_shop"]
-    # df = df[df.type!="college_and_university"]
-    # df = df[df.type!="coffee shop"]
-    # df = df[df.type!="Art Gallery"]
-    # df = df[df.type!="clothing_store"]
-    # print(df.type.value_counts())
+                #########################################
+                # GET accuracy/precision/recall/f1score #
+                #########################################
+                test_pred = cross_val_predict(clf_model, train, trainlabel,
+                                              cv=StratifiedKFold(n_splits=nsplits, shuffle=True), verbose=5)
+                precision, recall, fscore, support = score(trainlabel, test_pred, labels=labels, average=scoring_2)
+                # write_results_to_file("/home/bill/Desktop/thesis/scores_" + city + ".txt", city, attr, trainlabel,
+                #                       test_pred, precision, recall, fscore)
 
-    # store the df
-    #df.to_sql('matched_data_features_ams', db, index=False)
-    print(list(df))
-    print(df.shape)
-    ###############
-    # CLASSIFYING #
-    ###############
+                print_results(city, attr, scoring_2, name, trainlabel, test_pred, precision, recall, fscore, support)
+                print(a)
 
-    # Classifying
-    results = []
-    names = []
-    print("Training....")
-    data_labels = pd.DataFrame(df.type, columns=["type"])
-    data_features = df.drop(["type"], axis=1)
-    classes = list(data_labels["type"].unique())
-    classes.sort()
-    classes = {k: v for k, v in enumerate(classes)}
-    print(classes)
+        else: # not cross vall
+            print("TRAIN/TEST SPLIT")
+            for name, clf_model in models:
+                res = []
+                acc = []
+                for i in range(2):
+                    train, test, trainlabel, testlabel = train_test_split(data_features, data_labels,
+                                                                          test_size=tt_split)#, random_state=43)
+                    train = scaler.fit_transform(train)
+                    test = scaler.fit_transform(test)
+                    if smote:
+                        print("Oversampling....")
+                        sm = SMOTE(kind=smote_kind, out_step=smote_out_step)  # random_state=42)#, kind="svm")
+                        train, trainlabel = sm.fit_sample(train, trainlabel)
+                        print('Resampled dataset shape {}'.format(Counter(trainlabel)))
 
-    #####################################
-    # GRID SEARCHING FOR CLF PARAMETERS #
-    #####################################
-    # print("Getting Best Parameters....")
-    # get_best_parameters_for_clf("gb", data_features, data_labels, scoring="f1_micro")
-    if red_dim:
-        print("Dimensionality Reduction!")
-        dim = reduce_dimensions("pca", 200, data_features)
-        data_features = dim.transform(data_features)
-        #test = dim.transform(test)
-    if cross_val:
-        print("CROSS VAL")
-        nsplits = 10
-        trainlabel = data_labels
-        train = data_features.copy()
+                    print("Classifier: ", name)
+                    clf = train_classifier(clf_model, train, trainlabel)
+                    test_pred = clf.predict(test)
+                    precision, recall, fscore, support = score(testlabel, test_pred, labels=labels, average=scoring_2)
+                    print("CITY: ", city, " Attr.", attr)
+                    print("CLASSIFIER - ", scoring_2, " :", name)
+                    print("ACCURACY SCORE: ", accuracy_score(testlabel, test_pred))
+                    print('precision: {}'.format(precision))
+                    print('recall: {}'.format(recall))
+                    print('fscore: {}'.format(fscore))
+                print("FINAL FSCORE:", np.mean(res))
+                print("FINAL ACC:", np.mean(acc))
+                print(a)
+                names.append(name)
+                # results.append(res)
 
-        train.loc[:,:] = scaler.fit_transform(data_features)
-        for name, clf_model in models:
-            print("Classifier RUNNING: ", name)
+        title = title_lab + "_"
+        for a in attr:
+            title+= a + "_"
+        title+="rem_"
+        for rem in rem_labels:
+            title+= rem + "_"
+        # title+="change_"
+        # for t in change_lab:
+        #     title+= str(t) + "_"
+        # save_with_pickle("f_score_results_" + title + city, results)
+        # save_with_pickle("f_score_names_" + title + city, names)
+        # save_with_pickle("f_score_len_models_" + title + city, len(models))
+        # save_with_pickle("f_score_title_" + title + city, title)
+        #
+        # visualize_clf_accuracy(scoring, results, names, len(models), title, city)
+        labels = sorted(labels)
+        cm = confusion_matrix(testlabel.type.tolist(), test_pred, labels=labels)
 
-            # scores = cross_val_score(clf_model, train, trainlabel.values.ravel(),
-            #                          cv=StratifiedKFold(n_splits=nsplits, shuffle=True),
-            #                          scoring=scoring, verbose=3)
-            # train[["topiceng104", "topiceng105", "topiceng106", "topiceng107", "topiceng108"]] = \
-            #     train[["topiceng104", "topiceng105", "topiceng106", "topiceng107", "topiceng108"]].apply(pd.to_numeric, errors='coerce', axis=1)
-            # train = train.apply(pd.to_numeric, axis=1)
-            clf_trained = train_classifier(clf_model, train, trainlabel)
-            # print("ok")
+        print(test_pred)
+        print(testlabel.type.tolist())
+        print("Confusion matrix:\n%s" % cm)
+        plot_confusion_matrix(cm=cm,
+                              normalize=True,
+                              target_names=labels, city=city,
+                              title=title)
+        #cm.plot(normailized=True)
+        #plt.show()
 
-            # get_xgb_feat_importances(clf_model)
-            feature_important =clf_trained.get_booster().get_score(importance_type='gain')
-            keys = list(feature_important.keys())
-            values = list(feature_important.values())
-            data = pd.DataFrame(data=values, index=keys, columns=["score"]).sort_values(by="score", ascending=False).head(features_num)
-            print(data.head())
-            if city =="ath":
-                data.rename(index={'bar_5000': "# Bar (5km)",
-                                   "cafe_5000": "# Cafe (5km)",
-                                   "food_drink_shop_5000": "# Food/Drink (5km)",
-                                   "clothing_store_5000": "# Cl. Store (5km)",
-                                   "coffee_shop_5000": "# Coffee Shop (5000m)",
-                                   "college_and_university_5000": "# Coll/Uni (5km)",
-                                   "gym_5000": "# Gym (5km)",
-                                   "hotel_5000": "# Coffee (5km)",
-                                   "clothing_store_1000": "# Cl. Store (1km)",
-                                   "art_gallery_5000": "# Art Gall. (5km)",
-                                   "restaurant_5000": "# Restaurant (5km)",
-                                   "day0open": "# Monday Open Time",
-                                   'bar_1000': "# Bar (1km)",
-                                   "topiceng104_y": "Eng. Reviews Topic 4",
-                                   "topiceng105_y": "Eng. Reviews Topic 5",
-
-                                   }, inplace=True)
-            else:
-                data.rename(index={"Saturday": "Saturday (PopTimes)",
-
-                                   "clothing_store_100": "# Cl. Store (100m)",
-
-                                   'bar_1000': "# Bar (1000m)",
-                                   "day5open": "# Saturday Open Time",
-                                   "day5close": "# Saturday Close Time",
-                                   "day0close": "# Monday Close Time",
-                                   "day2open": "# Wednesday Open Time",
-
-                                   "day6close": "# Sunday Close Time",
-                                   "topiceng2511_y": "Eng. Reviews Topic 11",
-                                   "topiceng2521_y": "Eng. Reviews Topic 21",
-                                   "enwordcount_y": "# Words in Eng. Reviews",
-                                   "totaltweetcount": "# Tweets",
-                                   "enrevcount": "# Eng. Reviews",
-
-                                   "totalwordcount_y": "# Words in all Reviews",
-
-                                   "topiceng104_y": "Eng. Reviews Topic 4",
-                                   "topiceng105_y": "Eng. Reviews Topic 5",
-
-                                   }, inplace=True)
-
-            data.plot(kind='barh', grid=True, fontsize=16, legend="Importance Score")
-            plt.show()
-
-            # print(a)
-            testlabel = trainlabel
-            # test_pred = [classes[k] for k in test_pred]
-
-            # test_pred = cross_val_predict(clf_model, train, trainlabel,
-            #                               cv=StratifiedKFold(n_splits=nsplits, shuffle=True), verbose=5)
-            # precision, recall, fscore, support = score(trainlabel, test_pred, labels=labels, average=scoring_2)
-
-            #clf_model.fit(train, trainlabel)
-            # data_dmatrix = xgb.DMatrix(data=train, label=trainlabel)
-            # xg_reg = xgb.train(params={}, dtrain=data_dmatrix, num_boost_round=10)
-            # plot_importance(xg_reg, max_num_features=10)
-            #
-            #
-            # print(clf_model.get_booster().get_fscore())
-            # print(clf_model.get_booster().get_fscore().items())
-
-            # print(zip(clf_model.get_booster().columns, clf_model.get_booster().feature_importances_))
-            # clf_model.get_fscore()
-            # mapper = {'f{0}'.format(i): v for i, v in enumerate(dtrain.feature_names)}
-            # mapped = {mapper[k]: v for k, v in clf_model.get_fscore().items()}
-            # plot_importance(mapped, color='red', max_num_features=10)
-            # plt.show()
-            #print("F1 SCORE: 1st method {m} (+/- {s}".format(m=scores.mean(), s=scores.std() * 2))
-
-            print("CITY: ", city, " Attr.", attr)
-            print("CLASSIFIER - ", scoring_2, " :", name)
-            print("ACCURACY SCORE: ", accuracy_score(testlabel, test_pred))
-            print('precision: {}'.format(precision))
-            print('recall: {}'.format(recall))
-            print('fscore: {}'.format(fscore))
-            #print('fscore MEAN: {}'.format(fscore.mean()))
-            print('support: {}'.format(support))
-            # #
-            # results.append(scores)
-            # names.append(name)
-    else: # not cross vall
-        print("TRAIN/TEST SPLIT")
-        for name, clf_model in models:
-            res = []
-            acc = []
-            for i in range(2):
-                train, test, trainlabel, testlabel = train_test_split(data_features, data_labels,
-                                                                      test_size=tt_split)#, random_state=43)
-                train = scaler.fit_transform(train)
-                test = scaler.fit_transform(test)
-                if smote:
-                    print("Oversampling....")
-                    sm = SMOTE(kind=smote_kind, out_step=smote_out_step)  # random_state=42)#, kind="svm")
-                    train, trainlabel = sm.fit_sample(train, trainlabel)
-                    print('Resampled dataset shape {}'.format(Counter(trainlabel)))
-
-                print("Classifier: ", name)
-                clf = train_classifier(clf_model, train, trainlabel)
-                test_pred = clf.predict(test)
-                precision, recall, fscore, support = score(testlabel, test_pred, labels=labels, average=scoring_2)
-                print("CITY: ", city, " Attr.", attr)
-                print("CLASSIFIER - ", scoring_2, " :", name)
-                print("ACCURACY SCORE: ", accuracy_score(testlabel, test_pred))
-                print('precision: {}'.format(precision))
-                print('recall: {}'.format(recall))
-                print('fscore: {}'.format(fscore))
-            print("FINAL FSCORE:", np.mean(res))
-            print("FINAL ACC:", np.mean(acc))
-            print(a)
-            names.append(name)
-            # results.append(res)
-   # print(results)
-    print(names)
-    title = title_lab + "_2_"
-    for a in attr:
-        title+= a + "_"
-    title+="rem_"
-    for rem in rem_labels:
-        title+= rem + "_"
-    # title+="change_"
-    # for t in change_lab:
-    #     title+= str(t) + "_"
-    # save_with_pickle("f_score_results_" + title + city, results)
-    # save_with_pickle("f_score_names_" + title + city, names)
-    # save_with_pickle("f_score_len_models_" + title + city, len(models))
-    # save_with_pickle("f_score_title_" + title + city, title)
-    #
-    # visualize_clf_accuracy(scoring, results, names, len(models), title, city)
-
-    # cm = confusion_matrix(testlabel.type.tolist(), test_pred, labels=labels)
-    # print(test_pred)
-    # print(testlabel.type.tolist())
-    # print("Confusion matrix:\n%s" % cm)
-    # plot_confusion_matrix(cm=cm,
-    #                       normalize=True,
-    #                       target_names=labels, city=city,
-    #                       title=title)
-    # #cm.plot(normailized=True)
-    #plt.show()
-
-    print("Done...")
-    # print("ACCURACY SCORE: ", accuracy_score(testlabel, test_pred))
-    # precision, recall, fscore, support = score(testlabel, test_pred)
-    # print('precision: {}'.format(precision))
-    # print('recall: {}'.format(recall))
-    # print('fscore: {}'.format(fscore))
-    # print('support: {}'.format(support))
-    # print(f1_score(testlabel, test_pred, average="macro"))
-    # print(precision_score(testlabel, test_pred, average="macro"))
-    # print(recall_score(testlabel, test_pred, average="macro"))
-
-    #print(confusion_matrix(testlabel, test_pred))
+        print("Done...")
