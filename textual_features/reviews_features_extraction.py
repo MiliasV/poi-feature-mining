@@ -13,6 +13,8 @@ import gensim
 from gensim import corpora, models
 from gensim.models import CoherenceModel
 import sys
+import matplotlib.pyplot as plt
+
 
 from textual_features import tweet_features_extraction
 
@@ -63,7 +65,7 @@ def clean(doc, stop, exclude, lemma):
 
 def get_processed_lda_reviews_from_db(table, city, load):
     if load:
-        eng_rev_text = load_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/en_rev_text")
+        eng_rev_text = load_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/en_rev_text_" + city)
         if city == "ams":
             nl_rev_text = load_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/nl_rev_text")
             return eng_rev_text, nl_rev_text
@@ -75,7 +77,7 @@ def get_processed_lda_reviews_from_db(table, city, load):
         eng_rev = postgis_functions.get_lda_text_per_lang(table, "en")
         eng_rev_text = [t["processedtextlda"].split() for t in eng_rev]
         save_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                         "en_rev_text", eng_rev_text)
+                         "en_rev_text_" + city, eng_rev_text)
         if city == "ams":
             nl_rev = postgis_functions.get_lda_text_per_lang(table, "nl")
             nl_rev_text = [t["processedtextlda"].split() for t in nl_rev]
@@ -142,11 +144,13 @@ def get_perplexity_and_coherence_score(ntopics, lang, corpus,
     ################################################################3
     # checking the models!
     # Compute Perplexity
-    print('\nPerplexity ', lang, 'ntopics, : ', lda_model.log_perplexity(corpus))  # a measure of how good the model is. lower the better.
+    per = lda_model.log_perplexity(corpus)
+    print('\nPerplexity ', lang, " ",  ntopics , ":",  per)  # a measure of how good the model is. lower the better.
     # Compute Coherence Score
     coherence_model_lda = CoherenceModel(model=lda_model, texts=doc, dictionary=dict, coherence='c_v')
     coherence_lda = coherence_model_lda.get_coherence()
-    print('\nCoherence Score', ntopics, lang, ': ', coherence_lda)
+    print('\nCoherence Score', lang, " ", ntopics, ': ', coherence_lda)
+    return coherence_lda, per
 
 
 def train_lda_models(eng_rev, other_rev, ntopics, passes):
@@ -158,7 +162,7 @@ def train_lda_models(eng_rev, other_rev, ntopics, passes):
     eng_term_matrix = [eng_dict.doc2bow(doc) for doc in eng_rev]
     other_term_matrix = [other_dict.doc2bow(doc) for doc in other_rev]
     corpora.MmCorpus.serialize("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                               "en_term_matrix_rev.mm", eng_term_matrix)
+                               "en_term_matrix_rev_" + city +".mm", eng_term_matrix)
     if city == "ams":
         corpora.MmCorpus.serialize("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                                    "nl_term_matrix_rev.mm", other_term_matrix)
@@ -174,11 +178,11 @@ def train_lda_models(eng_rev, other_rev, ntopics, passes):
 def get_lda_models(eng_rev, other_rev, ntopics, passes, load, evaluate, city):
     if load:
         eng_dict = corpora.Dictionary.load("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                                           "en_dict_rev.pkl")
+                                           "en_dict_rev_" + city + ".pkl")
         lda_eng = models.LdaModel.load("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                                       "lda_en_rev" + "_" + str(ntopics) + ".model")
+                                       "lda_en_rev" + "_" + str(ntopics) + "_" + city + ".model")
         eng_term_matrix = corpora.MmCorpus("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                                           "en_term_matrix_rev.mm")
+                                           "en_term_matrix_rev_" + city + ".mm")
         if city == "ams":
             other_dict = corpora.Dictionary.load("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                                               "nl_dict_rev.pkl")
@@ -198,31 +202,31 @@ def get_lda_models(eng_rev, other_rev, ntopics, passes, load, evaluate, city):
         if city == "ams":
             lda_eng, lda_other, eng_dict, other_dict, eng_term_matrix, other_term_matrix = train_lda_models(eng_rev, other_rev, ntopics, passes)
             lda_eng.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                         "lda_en_rev" + "_" + str(ntopics) + ".model")
+                         "lda_en_rev" + "_" + str(ntopics) + "_" + city + ".model")
             lda_other.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                         "lda_nl_rev" + "_" + str(ntopics) + ".model")
             eng_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                          "en_dict_rev.pkl")
+                          "en_dict_rev_" + city + ".pkl")
             other_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                          "nl_dict_rev.pkl")
         elif city == "ath":
             lda_eng, lda_other, eng_dict, other_dict, eng_term_matrix, other_term_matrix = train_lda_models(eng_rev, other_rev, ntopics, passes)
             lda_eng.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                         "lda_en_rev" + "_" + str(ntopics) + ".model")
+                         "lda_en_rev" + "_" + str(ntopics) + "_" + city +".model")
             lda_other.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                         "lda_el_rev" + "_" + str(ntopics) + ".model")
             eng_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                          "en_dict_rev.pkl")
+                          "en_dict_rev_"+city+".pkl")
             other_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                          "el_dict_rev.pkl")
     if evaluate:
-        get_perplexity_and_coherence_score(ntopics, "eng", eng_term_matrix, eng_rev, eng_dict, lda_eng)
-        if city == "ams":
-            get_perplexity_and_coherence_score(ntopics, "nl", other_term_matrix, other_rev, other_dict, lda_other)
-        elif city == "ath":
-            get_perplexity_and_coherence_score(ntopics, "el", other_term_matrix, other_rev, other_dict, lda_other)
+        coh, per = get_perplexity_and_coherence_score(ntopics, "eng", eng_term_matrix, eng_rev, eng_dict, lda_eng)
+        # if city == "ams":
+        #     get_perplexity_and_coherence_score(ntopics, "nl", other_term_matrix, other_rev, other_dict, lda_other)
+        # elif city == "ath":
+        #     get_perplexity_and_coherence_score(ntopics, "el", other_term_matrix, other_rev, other_dict, lda_other)
 
-    return lda_eng, lda_other, eng_dict, other_dict
+    return lda_eng, lda_other, eng_dict, other_dict#, coh, per
 
 
 def get_topics_from_lda(obj, model, dict, num_topics):
@@ -252,7 +256,7 @@ def get_topics_from_lda(obj, model, dict, num_topics):
 
 
 if __name__ == '__main__':
-    city = "ams"
+    city = "ath"
     if city == "ams":
         lan = "nl"
     else:
@@ -261,27 +265,37 @@ if __name__ == '__main__':
     rev_table = "matched_places_google_reviews_" + city
     # Store reviews to table and process text for lda
     #store_google_reviews_and_processed_text(gtable, rev_table, city)
-    store_table = "matched_places_review_features_10_25_" + city
+    store_table = "matched_places_review_features_10_25_" + city + "_2"
     num_topics_small = 10
     num_topics_big = 25
-    # session, RTable = pois_storing_functions.setup_db_text(store_table, "reviews",
-    #                                                         num_topics_small = num_topics_small,
-    #                                                         num_topics_big = num_topics_big, lan=lan)
+    session, RTable = pois_storing_functions.setup_db_text(store_table, "reviews",
+                                                            num_topics_small = num_topics_small,
+                                                            num_topics_big = num_topics_big, lan=lan)
     gpoints = postgis_functions.get_rows_from_table(gtable)
     print("LOADING Reviews....")
     eng_rev, other_rev = get_processed_lda_reviews_from_db(rev_table, city, load=True)
     print("TRAINING Model...")
     # train or load models
-    lda_eng_5, lda_other_5, eng_dict, other_dict = get_lda_models(eng_rev, other_rev,
-                                                        ntopics=num_topics_small, passes=20, load=True, evaluate=False,city=city)
+    coh = []
+    per = []
+    top = []
+    # for i in [2,4,6,8,10,15,20,25,40]:
+    #     print(i)
+    #     lda_eng_5, lda_other_5, eng_dict, other_dict, coh_v, per_v = get_lda_models(eng_rev, other_rev,
+    #                                                         ntopics=i, passes=20, load=False, evaluate=False,city=city)
+    #     coh.append(coh_v)
+    #     per.append(per_v)
+
     lda_eng_10, lda_other_10, eng_dict, other_dict = get_lda_models(eng_rev, other_rev,
                                                         ntopics=num_topics_big, passes=20, load=True, evaluate=False, city=city)
 
-
+    lda_eng_5, lda_other_5, eng_dict, other_dict = get_lda_models(eng_rev, other_rev,
+                                                                                ntopics=num_topics_small, passes=20, load=True,
+                                                                                evaluate=False, city=city)
+    # , coh_v, per_v
     print(lda_eng_5.show_topics(num_topics=10, num_words=5))
-    print(lda_other_5.show_topics(num_topics=10, num_words=5))
+    # print(lda_other_5.show_topics(num_topics=10, num_words=5))
     print(lda_eng_10.show_topics(num_topics=25, num_words=5))
-    print(a)
 
     for g in gpoints:
         print(g)
@@ -384,11 +398,11 @@ if __name__ == '__main__':
         #############
         # Add to db #
         #############
-        # try:
-        #     session.add(RTable(**data))
-        #     session.commit()
-        #     print(data["name"], " INSERTED!")
-        # except Exception as err:
-        #     session.rollback()
-        #     print("# NOT INSERTED: ", err)
+        try:
+            session.add(RTable(**data))
+            session.commit()
+            print(data["name"], " INSERTED!")
+        except Exception as err:
+            session.rollback()
+            print("# NOT INSERTED: ", err)
         print("############################################################")
