@@ -68,7 +68,7 @@ if __name__ == '__main__':
     # select tweets or reviews
     source_list = ["tweets", "rev"]
     # select language {en, nl}
-    lang_list = ["en","nl"]
+    lang_list = ["en"]
     city = "ath"
     # select table
     for source in source_list:

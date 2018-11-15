@@ -433,95 +433,39 @@ def create_count_per_poi_table(engine, table_name, metadata):
 #         metadata.create_all()
 
 
-# def create_review_features_table(engine, table_name,  metadata, num_topics_small, num_topics_big, lan):
-#     # if table does not exist
-#     if not engine.dialect.has_table(engine, table_name):
-#         Table(table_name, metadata,
-#               Column("id", String, primary_key=True, nullable=False),
-#               Column("name", String),
-#               Column("placesid", String),
-#               Column("lat", Numeric),
-#               Column("lng", Numeric),
-#               Column("type", String),
-#               Column("enrevcount", Numeric),
-#               Column(lan + "revcount", Numeric),
-#               Column("totalrevcount", Numeric),
-#               Column("enwordcount", Numeric),
-#               Column(lan + "wordcount", Numeric),
-#               Column("totalwordcount", Numeric),
-#               Column("engavgword", Numeric),
-#               Column(lan + "avgword", Numeric),
-#               Column("avgword", Numeric),
-#               Column("enpolpoly", Numeric),
-#               Column(lan + "polpoly", Numeric),
-#               Column("enpolblob", Numeric),
-#               Column("ensubjblob", Numeric),
-#               Column(lan + "polblob", Numeric),
-#               Column(lan + "subblob", Numeric),
-#               *(Column("topiceng" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
-#               *(Column("topic" + lan + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
-#               *(Column("topiceng" + str(num_topics_big) + str(i + 1), String()) for i in range(num_topics_big)),
-#               *(Column("topic" + lan + str(num_topics_big) + str(i + 1) , String()) for i in range(num_topics_big))
-#               )
-#         metadata.create_all()
-
-def create_review_features_table(engine, table_name, metadata):
+def create_review_features_table(engine, table_name,  metadata, num_topics_small, num_topics_big, lan):
     # if table does not exist
     if not engine.dialect.has_table(engine, table_name):
         Table(table_name, metadata,
               Column("id", String, primary_key=True, nullable=False),
               Column("name", String),
-              Column("point", Numeric),
+              Column("placesid", String),
               Column("lat", Numeric),
               Column("lng", Numeric),
               Column("type", String),
-              Column("topiceng51", Numeric),
-              Column("topicnl51", Numeric),
-              Column("topiceng52", Numeric),
-              Column("topicnl52", Numeric),
-              Column("topiceng53", Numeric),
-              Column("topicnl53", Numeric),
-              Column("topiceng54", Numeric),
-              Column("topicnl54", Numeric),
-              Column("topiceng55", Numeric),
-              Column("topicnl55", Numeric),
-              Column("topiceng101", Numeric),
-              Column("topicnl101", Numeric),
-              Column("topiceng102", Numeric),
-              Column("topicnl102", Numeric),
-              Column("topiceng103", Numeric),
-              Column("topicnl103", Numeric),
-              Column("topiceng104", Numeric),
-              Column("topicnl104", Numeric),
-              Column("topiceng105", Numeric),
-              Column("topicnl105", Numeric),
-              Column("topiceng106", Numeric),
-              Column("topicnl106", Numeric),
-              Column("topiceng107", Numeric),
-              Column("topicnl107", Numeric),
-              Column("topiceng108", Numeric),
-              Column("topicnl108", Numeric),
-              Column("topiceng109", Numeric),
-              Column("topicnl109", Numeric),
-              Column("topiceng1010", Numeric),
-              Column("topicnl1010", Numeric),
               Column("enrevcount", Numeric),
-              Column("nlrevcount", Numeric),
+              Column(lan + "revcount", Numeric),
               Column("totalrevcount", Numeric),
               Column("enwordcount", Numeric),
-              Column("nlwordcount", Numeric),
+              Column(lan + "wordcount", Numeric),
               Column("totalwordcount", Numeric),
               Column("engavgword", Numeric),
-              Column("nlavgword", Numeric),
+              Column(lan + "avgword", Numeric),
               Column("avgword", Numeric),
               Column("enpolpoly", Numeric),
-              Column("nlpolpoly", Numeric),
+              Column(lan + "polpoly", Numeric),
               Column("enpolblob", Numeric),
               Column("ensubjblob", Numeric),
-              Column("nlpolblob", Numeric),
-              Column("nlsubblob", Numeric)
+              Column(lan + "polblob", Numeric),
+              Column(lan + "subblob", Numeric),
+              *(Column("topiceng" + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
+              *(Column("topic" + lan + str(num_topics_small) + str(i + 1), String()) for i in range(num_topics_small)),
+              *(Column("topiceng" + str(num_topics_big) + str(i + 1), String()) for i in range(num_topics_big)),
+              *(Column("topic" + lan + str(num_topics_big) + str(i + 1) , String()) for i in range(num_topics_big))
               )
         metadata.create_all()
+
+
 
 
 def create_similarities_table(engine, table_name, metadata):
@@ -558,7 +502,62 @@ def create_similarities_table(engine, table_name, metadata):
               )
         metadata.create_all()
 
-
+def create_spatial_features_table(engine, table_name, metadata):
+    # if table does not exist
+    if not engine.dialect.has_table(engine, table_name):
+        Table(table_name, metadata,
+              Column("placesid", String, primary_key=True, nullable=False),
+              Column("name", String),
+              Column("type", String),
+              Column("point", Numeric),
+              Column("art_gallery_100", Numeric),
+              Column("bar_100", Numeric),
+              Column("cafe_100", Numeric),
+              Column("clothing_store_100", Numeric),
+              Column("coffee_shop_100", Numeric),
+              Column("college_and_university_100", Numeric),
+              Column("food_drink_shop_100", Numeric),
+              Column("gym_100", Numeric),
+              Column("hotel_100", Numeric),
+              Column("nightclub_100", Numeric),
+              Column("restaurant_100", Numeric),
+              Column("art_gallery_1000", Numeric),
+              Column("bar_1000", Numeric),
+              Column("cafe_1000", Numeric),
+              Column("clothing_store_1000", Numeric),
+              Column("coffee_shop_1000", Numeric),
+              Column("college_and_university_1000", Numeric),
+              Column("food_drink_shop_1000", Numeric),
+              Column("gym_1000", Numeric),
+              Column("hotel_1000", Numeric),
+              Column("nightclub_1000", Numeric),
+              Column("restaurant_1000", Numeric),
+              Column("art_gallery_3000", Numeric),
+              Column("bar_3000", Numeric),
+              Column("cafe_3000", Numeric),
+              Column("clothing_store_3000", Numeric),
+              Column("coffee_shop_3000", Numeric),
+              Column("college_and_university_3000", Numeric),
+              Column("food_drink_shop_3000", Numeric),
+              Column("gym_3000", Numeric),
+              Column("hotel_3000", Numeric),
+              Column("nightclub_3000", Numeric),
+              Column("restaurant_3000", Numeric),
+              Column("art_gallery_2000", Numeric),
+              Column("bar_2000", Numeric),
+              Column("cafe_2000", Numeric),
+              Column("clothing_store_2000", Numeric),
+              Column("coffee_shop_2000", Numeric),
+              Column("college_and_university_2000", Numeric),
+              Column("food_drink_shop_2000", Numeric),
+              Column("gym_2000", Numeric),
+              Column("hotel_2000", Numeric),
+              Column("nightclub_2000", Numeric),
+              Column("restaurant_2000", Numeric),
+              Column("lat", Numeric),
+              Column('lng', Numeric)
+              )
+        metadata.create_all()
 def create_gf_features_table(engine, table_name, metadata):
     # if table does not exist
     if not engine.dialect.has_table(engine, table_name):
@@ -723,6 +722,8 @@ def setup_db(pois_table_name, count_table_name, source):
         create_reviews_table(db, pois_table_name, metadata)
     elif source == "review_features":
           create_review_features_table(db, pois_table_name, metadata)
+    elif source == "spatial":
+          create_spatial_features_table(db, pois_table_name, metadata)
     else:
         print("ERROR, none of the right options were given")
         return 0
