@@ -156,9 +156,9 @@ def plot_confusion_matrix(cm,
     plt.xlabel('Predicted label', fontsize=13)#\naccuracy={:0.4f}; misclass={:0.4f}'.format(accuracy, misclass))
     plt.tight_layout()
 
-    plt.savefig("/home/bill/Desktop/thesis/conf_" + title  + city + ".pdf", dpi=100)
+    plt.savefig("/home/bill/Desktop/thesis/report_images/important_features/conf_" + title  + city + ".pdf", dpi=100)
 
-    # plt.show()
+    plt.show()
 
 
 def read_table_as_df(table):
@@ -201,14 +201,14 @@ def read_features(city, scene=True, od_oid=True, od_coco=True,
         attr.append("coco")
     # twitter features
     if twitter:
-        tf_df = read_table_as_df("matched_places_text_features_10_25_" + city)
+        tf_df = read_table_as_df("matched_places_text_features_10_" + city)
         tf_df = preprocess_df(tf_df, "tf")
         dfs.append(tf_df)
         attr.append("twitter")
     # review features
     if review:
         # rf_df = read_table_as_df("matched_places_review_features_10_25_" + city + "_2")
-        rf_df = read_table_as_df("matched_places_experiential_features_" + city +"_2")
+        rf_df = read_table_as_df("matched_places_experiential_features_10_" + city)
         rf_df = preprocess_df(rf_df, "rf")
         dfs.append(rf_df)
         attr.append("reviews")
@@ -222,7 +222,7 @@ def read_features(city, scene=True, od_oid=True, od_coco=True,
     # merge by reduce
     df = reduce(lambda left, right: pd.merge(left, right, on='placesid'), dfs)
     # drop not needed cols
-    df = df.fillna(-1)
+    df = df.fillna(0)
     df = df.drop(["placesid"], axis=1)
     return df, attr
 
@@ -391,7 +391,7 @@ def preprocess_df(df, label):
         df = df.fillna(0)
 
     elif label == "tf":
-        df = df.drop(["id", "point", "name", "lat", "lng", "id", "name", "lat", "lng"], axis=1)
+        df = df.drop(["id", "point", "name", "lat", "lng", "name"], axis=1)
         # df = df.drop(["id", "name", "lat", "lng", "id", "name", "lat", "lng",
         #          "timediffavg", "timediffmedian"], axis=1)
     elif label == "rf":
@@ -554,29 +554,38 @@ def rename_features_for_plot(city, data):
     if city == "ath":
         data.rename(index={
             "day6open": "Sunday (Open Time)",
-            "day2close": "Wednesday (Open Time)",
+            "day2close": "Wednesday (Close Time)",
             "Saturday": "Saturday (PopTimes)",
             "Sunday": "Sunday (PopTimes)",
             "day4close": "Friday (Close Time)",
+            "day4open": "Friday (Open Time)",
+            "day5close": "Saturday (Close Time)",
             "day3close": "Thursday (Close Time)",
             "day3open": "Thursday (Open Time)",
-
             "day6close": "Sunday (Close Time)",
             "cafe_1000": "# of nearby Cafe (radius = 1km)",
-            "clothing_store_100": "# of nearby Cloth. Stores (radius = 1km)",
+            "clothing_store_100": "# of nearby Cloth. Stores (radius = 100m)",
 
-            "topiceng1010_y": "Topic (10th): 'Gym' \n (Source: Reviews, Lang: Eng., Method: LDA)",
-            "topiceng105_y": "Topic (5th): 'Hotel' \n (Source: Reviews, Lang: Eng., Method: LDA)",
-            "topiceng104_y": "Topic (4th): 'Food Place' \n (Source: Reviews, Lang: Eng., Method: LDA)",
-
-            "topiceng259_y": "Topic (9th): 'Food/Wine' \n (Source: Reviews, Lang: Eng., Method: LDA)",
-            "topiceng2511_y": "Topic (11th): 'Food Place' \n (Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng109_y": "Topic (9th/10): 'Food Place'",
+                             # "\n (Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng255_y": "Topic (5th/25): 'Coffee/Drink' ",
+                             # "\n (Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng2518_y": "Topic (18th/25): 'Food Place/Service' ",
+                              # "\n (Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng2511_y": "Topic (11th/25): 'Hotel/Room/Acropolis' ",
+                              # "\n (Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng106_y": "Topic (6th/10): 'Restaurant' ",
+                             # "(Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng107_y": "Topic (7th/10): 'Hotel/Room/Breakfast' ",
+                             # "\n (Source: Reviews, Lang: Eng., Method: LDA)",
 
         }, inplace=True)
     else:
         data.rename(index={
             "Saturday": "Saturday (PopTimes)",
-           "clothing_store_100": "# of nearby Cloth. Stores (radius = 100m)",
+            "Sunday": "Sunday (PopTimes)",
+
+            "clothing_store_100": "# of nearby Cloth. Stores (radius = 100m)",
            'bar_1000': "# of nearby Bars (radius = 1km)",
            "day4open": "Friday (Open Time)",
            "day5open": "Saturday (Open Time)",
@@ -585,30 +594,48 @@ def rename_features_for_plot(city, data):
            "day2open": "Wednesday (Open Time)",
            "engavgword_y": "# Words in Eng. Reviews (Avg.)",
            "day6close": "Sunday (Close Time)",
-           "topiceng2511_y": "Topic (11th): 'Restaraunt/Pizza' \n (Source: Reviews, Lang: Eng., Method: LDA)",
-           "topiceng2521_y": "Topic (21th): 'Food Place' \n (Source: Reviews, Lang: Eng., Method: LDA)",
+
            "enwordcount_y": "# of Words in Eng. Reviews (Sum)",
            "totaltweetcount": "# of Tweets (Sum)",
            "enrevcount": "# of Eng. Reviews (Sum)",
-           "totalwordcount_y": "# Words in all Reviews",
-           "topiceng104_y": "Topic (4th): 'Meat & Wine' \n (Source: Reviews, Lang: Eng., Method: LDA)",
-           # "topiceng105_y": "Topic (5th): 'Service Place'    \n (Source: Reviews, Lang: Eng., Method: LDA)",
+           "totalwordcount_y": "# Words in all Reviews (Sum)",
 
-           }, inplace=True)
+            "topiceng2519_y": "Topic (19th/25): 'Hotel' ",
+                              #"\n (Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng107_y": "Topic (7th/10): 'Food Place'",
+                            # \n (Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng1010_y": "Topic (10th/10): 'Store' ",
+                              # "\n (Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng257_y": "Topic (7th/25): 'Beer Place'",
+                             # " \n (Source: Reviews, Lang: Eng., Method: LDA)",
+            "topiceng101_y": "Topic (1st/10): 'Hotel'"
+                             # " \n (Source: Reviews, Lang: Eng., Method: LDA)",
+
+        }, inplace=True)
     return data
 
 
-def get_xgb_feature_importances(clf_model, train, trainlabel):
+def store_fi_to_table(target_label, city, data):
+    store_table = "matched_places_" + city + "_fp_" + target_label[0]
+    db = create_engine('postgresql://postgres:postgres@localhost/pois')
+    print(data.head())
+    data = rename_features_for_plot(city, data)
+    data.reset_index(inplace=True)
+    data.to_sql(store_table, db, index=True)
+
+
+def get_xgb_feature_importances(clf_model, train, trainlabel, target_label):
     clf_trained = train_classifier(clf_model, train, trainlabel)
     get_xgb_feat_importances(clf_model)
     feature_important = clf_trained.get_booster().get_score(importance_type='gain')
     keys = list(feature_important.keys())
     values = list(feature_important.values())
-    data = pd.DataFrame(data=values, index=keys, columns=["score"]).sort_values(by="score", ascending=False).head(
-        features_num)
+    data = pd.DataFrame(data=values, index=keys, columns=["score"])\
+        .sort_values(by="score", ascending=False).head(features_num)
     # print(data.head())
-    # data = rename_features_for_plot(city, data)
-    data.plot(kind='barh', grid=True, fontsize=16, legend="Importance Score")
+    # store_fi_to_table(target_label, city, data)
+
+    data.plot(kind='barh', grid=True, fontsize=22, legend="Importance Score", color=[plt.cm.Paired([1,1,2,1,2,1,1,1,5,1,2,2,1,2,1,2,8])])
     plt.show()
 
 
@@ -654,13 +681,18 @@ if __name__ == '__main__':
     cross_val = True
     scaler = StandardScaler()
     feature_set_list = ["all"]  #""scene", "social", "exp", "funct", "spatial", "all"]:
+    # # Test only one label!!!!
+    target_label = []#["restaurant`"]
+
+    classes_set = "a"
+    city = "ath"
+    features_num = 15
     #################
     # read the data #
     #################
     # area of Amsterdam equal to Athens
     # lat < 52.38524 AND lat > 52.34757 and lng > 4.84067 and lng < 4.91946
-    city = "ath"
-    features_num = 15
+
     for i in feature_set_list:
         if i=="scene":
             df, attr = read_features(city, scene=True, od_oid=True, od_coco=True,
@@ -692,44 +724,71 @@ if __name__ == '__main__':
                   "clothing_store", "nightclub", "gym"
                   ]
         title_lab = "set_A"
+
         # Remove labels
-        rem_labels = ["nightclub"]  # ["nightclub", "gym"]
+        rem_labels =["nightclub"]# ,
+                  #  "bar",
+                  # "food_drink_shop", "cafe",
+                  # "college_and_university",
+                  # "art_gallery", "coffee_shop", "nightclub", "gym"]  # ["nightclub", "gym"]
         labels = [x for x in labels if x not in rem_labels]
         for rem_type in rem_labels:
             df = df[df.type != rem_type]
 
+        if target_label:
+            #separating the target class from the rest
+            df_target = df.loc[df["type"] == target_label[0]]
+            df_other = df.loc[df["type"] != target_label[0]]
+            # amount of the other classes (minus the target)
+            other_labels_count = len(labels) - 1
+            target_count = df_target.shape[0]
+            # equal amount of samples from each class to have in total equal number of the target class and the rest
+            samples_per_class = int(target_count/(other_labels_count+2.3))
+            print(samples_per_class)
+            # subsampling
+            df_other = df_other.groupby('type').apply(lambda x: x.sample(samples_per_class, random_state=42))
+            print(df_other.type.value_counts())
+            # append one dataframe to the other
+            df = df_target.append(df_other)
+            print(df.type.value_counts())
+            if target_label:
+                df.loc[df["type"] != target_label[0], 'type'] = "other"
+                print(target_label[0])
+                labels = [target_label[0], "other"]
+                # df = df.drop(df[df['type'] == 'other'].sample(frac=0.9).index)
+
         # Change Labels
         change_lab = ["None"]  # [("bar", "cafe")]#[("bar", "cafe")]
-        change_lab = [("college_and_university", "coll & uni"),
-                      ("food_drink_shop", "food/drink shop"),
-                      ("restaurant", "restaurant"),
-                      ("art_gallery", "art gallery"),
-                      ("coffee_shop", "coffee shop"),
-                      ("clothing_store", "clothing store"),
-                      ("gym", "gym"),
-                      ("bar", "bar"),
-                      ("hotel", "hotel"),
-                      ("cafe", "cafe")
-                      ]
-
-        # change_lab = [("clothing_store", "shop_and_service"),
-        #               ("food_drink_shop", "food"),
-        #               ("coffee_shop", "food"),
-        #               ("bar", "nightlife_spot"),
-        #               # ("nightclub", "nightlife_spot"),
-        #               ("restaurant", "food"),
-        #               ("cafe", "food"),
-        #               ("hotel", "travel_transport"),
-        #               ("art_gallery","arts_and_entertainment"),
-        #               ("college_and_university", "college_and_university"),
-        #               ("gym", "outdoor_and_recreation")
+        # change_lab = [("college_and_university", "coll & uni"),
+        #               ("food_drink_shop", "food/drink shop"),
+        #               ("restaurant", "restaurant"),
+        #               ("art_gallery", "art gallery"),
+        #               ("coffee_shop", "coffee shop"),
+        #               ("clothing_store", "clothing store"),
+        #               ("gym", "gym"),
+        #               ("bar", "bar"),
+        #               ("hotel", "hotel"),
+        #               ("cafe", "cafe")
         #               ]
-
-        for type_tuple in change_lab:
-            df.loc[df['type'] == type_tuple[0], 'type'] = type_tuple[1]
-        labels = [x for x in labels if x not in rem_labels]
-        if change_lab[0] != "None":
-            labels = list(set([y for (x, y) in change_lab if x in labels]))
+        # if classes_set=="b":
+        #     change_lab = [("clothing_store", "shop_and_service"),
+        #                   ("food_drink_shop", "food"),
+        #                   ("coffee_shop", "food"),
+        #                   ("bar", "nightlife_spot"),
+        #                   # ("nightclub", "nightlife_spot"),
+        #                   ("restaurant", "food"),
+        #                   ("cafe", "food"),
+        #                   ("hotel", "travel_transport"),
+        #                   ("art_gallery","arts_and_entertainment"),
+        #                   ("college_and_university", "college_and_university"),
+        #                   ("gym", "outdoor_and_recreation")
+        #                   ]
+        #
+        # for type_tuple in change_lab:
+        #     df.loc[df['type'] == type_tuple[0], 'type'] = type_tuple[1]
+        # # labels = [x for x in labels if x not in rem_labels]
+        # if change_lab[0] != "None":
+        #     labels = list(set([y for (x, y) in change_lab if x in labels]))
 
         data_labels = pd.DataFrame(df.type, columns=["type"])
         data_features = df.drop(["type"], axis=1)
@@ -795,7 +854,11 @@ if __name__ == '__main__':
                 ###############################
                 # Get XGB Feature Importances #
                 ###############################
-                # get_xgb_feature_importances(clf_model, train, trainlabel)
+                get_xgb_feature_importances(clf_model, train, trainlabel, target_label)
+
+                ######################
+                # Decision Tree plot #
+                ######################
                 # for plotting decision tree ########################################
                 # clf_trained = train_classifier(clf_model,train, trainlabel)
                 # plot_dt(clf_trained, list(train))
@@ -808,8 +871,9 @@ if __name__ == '__main__':
                 precision, recall, fscore, support = score(trainlabel, test_pred, labels=labels, average=scoring_2)
                 # write_results_to_file("/home/bill/Desktop/thesis/scores_" + city + ".txt", city, attr, trainlabel,
                 #                       test_pred, precision, recall, fscore)
-
+                print("TYPE: ", target_label)
                 print_results(city, attr, scoring_2, name, trainlabel, test_pred, precision, recall, fscore, support)
+
                 print(a)
 
         else: # not cross vall
@@ -832,16 +896,9 @@ if __name__ == '__main__':
                     clf = train_classifier(clf_model, train, trainlabel)
                     test_pred = clf.predict(test)
                     precision, recall, fscore, support = score(testlabel, test_pred, labels=labels, average=scoring_2)
-                    print("CITY: ", city, " Attr.", attr)
-                    print("CLASSIFIER - ", scoring_2, " :", name)
-                    print("ACCURACY SCORE: ", accuracy_score(testlabel, test_pred))
-                    print('precision: {}'.format(precision))
-                    print('recall: {}'.format(recall))
-                    print('fscore: {}'.format(fscore))
-                print("FINAL FSCORE:", np.mean(res))
-                print("FINAL ACC:", np.mean(acc))
-                print(a)
-                names.append(name)
+                    print_results(city, attr, scoring_2, name, trainlabel, test_pred, precision, recall, fscore,
+                                  support)
+                # names.append(name)
                 # results.append(res)
 
         title = title_lab + "_"
@@ -865,10 +922,10 @@ if __name__ == '__main__':
         print(test_pred)
         print(testlabel.type.tolist())
         print("Confusion matrix:\n%s" % cm)
-        plot_confusion_matrix(cm=cm,
-                              normalize=True,
-                              target_names=labels, city=city,
-                              title=title)
+        # plot_confusion_matrix(cm=cm,
+        #                       normalize=True,
+        #                       target_names=labels, city=city,
+        #                       title=title)
         #cm.plot(normailized=True)
         #plt.show()
 
