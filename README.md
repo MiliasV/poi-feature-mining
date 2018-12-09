@@ -6,7 +6,8 @@
 
 ### General
 
-This code was developed during my MSc thesis project (see abstract below). It includes code for collecting data from Google, Google  Street View, Foursquare and Twitter, for extracting various types of features from those data and for predicting the points-of-interest (POIs) types. It definitely needs polishing as in various parts it is quite "quick and dirty".  
+This code was developed during my MSc thesis project (see abstract below). It includes code for collecting data from Google, Google  Street View, Foursquare and Twitter, for extracting various types of features from those data and for predicting the points-of-interest (POIs) types. In the near future the code will be polished as it now is quite "quick and dirty".  
+A link to the final thesis document which includes all the details of this work will be soon added.
 
 Don't hesitate to contact me for any questions.
 
