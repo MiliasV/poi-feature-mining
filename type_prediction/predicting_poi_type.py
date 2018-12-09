@@ -682,7 +682,7 @@ if __name__ == '__main__':
     scaler = StandardScaler()
     feature_set_list = ["all"]  #""scene", "social", "exp", "funct", "spatial", "all"]:
     # # Test only one label!!!!
-    target_label = []#["restaurant`"]
+    target_label = []# ["restaurant`"]
 
     classes_set = "a"
     city = "ath"
@@ -691,7 +691,6 @@ if __name__ == '__main__':
     # read the data #
     #################
     # area of Amsterdam equal to Athens
-    # lat < 52.38524 AND lat > 52.34757 and lng > 4.84067 and lng < 4.91946
 
     for i in feature_set_list:
         if i=="scene":
@@ -759,30 +758,20 @@ if __name__ == '__main__':
 
         # Change Labels
         change_lab = ["None"]  # [("bar", "cafe")]#[("bar", "cafe")]
-        # change_lab = [("college_and_university", "coll & uni"),
-        #               ("food_drink_shop", "food/drink shop"),
-        #               ("restaurant", "restaurant"),
-        #               ("art_gallery", "art gallery"),
-        #               ("coffee_shop", "coffee shop"),
-        #               ("clothing_store", "clothing store"),
-        #               ("gym", "gym"),
-        #               ("bar", "bar"),
-        #               ("hotel", "hotel"),
-        #               ("cafe", "cafe")
-        #               ]
-        # if classes_set=="b":
-        #     change_lab = [("clothing_store", "shop_and_service"),
-        #                   ("food_drink_shop", "food"),
-        #                   ("coffee_shop", "food"),
-        #                   ("bar", "nightlife_spot"),
-        #                   # ("nightclub", "nightlife_spot"),
-        #                   ("restaurant", "food"),
-        #                   ("cafe", "food"),
-        #                   ("hotel", "travel_transport"),
-        #                   ("art_gallery","arts_and_entertainment"),
-        #                   ("college_and_university", "college_and_university"),
-        #                   ("gym", "outdoor_and_recreation")
-        #                   ]
+
+        if classes_set=="b":
+            change_lab = [("clothing_store", "shop_and_service"),
+                          ("food_drink_shop", "food"),
+                          ("coffee_shop", "food"),
+                          ("bar", "nightlife_spot"),
+                          # ("nightclub", "nightlife_spot"),
+                          ("restaurant", "food"),
+                          ("cafe", "food"),
+                          ("hotel", "travel_transport"),
+                          ("art_gallery","arts_and_entertainment"),
+                          ("college_and_university", "college_and_university"),
+                          ("gym", "outdoor_and_recreation")
+                          ]
         #
         # for type_tuple in change_lab:
         #     df.loc[df['type'] == type_tuple[0], 'type'] = type_tuple[1]
