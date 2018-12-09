@@ -46,7 +46,7 @@ def insert_gsv_data(img, places_id, point_id, session, GSVTable, head, path):
         print("# NOT INSERTED: ", err)
 
 
-def download_img(img, places_id, point_id, session, GSVTable, k):
+def download_img(img, places_id, point_id, session, GSVTable):
     if "year" not in img:
         img["year"] = "None"
         img["month"] = "None"
@@ -54,9 +54,8 @@ def download_img(img, places_id, point_id, session, GSVTable, k):
         img_name = "row_num_" + str(point_id) + "_id_" + img[
             "panoid"] + "_head_" + head + "_lat_" + \
                    str(img["lat"]) + "_lng_" + str(img["lon"]) + "_year_" + str(img["year"])
-        # streetview.api_download(img["panoid"], head, CITY_FOLDER + "/" + img_name, config.api_key)
         params = [{'size': '640x640', 'heading': head, 'pitch': '0',
-                   'fov': '90', "pano": img["panoid"], "key": k}]#config.api_key}]
+                   'fov': '90', "pano": img["panoid"], "key": config.api_key}]
         # # Create a results object
         results = google_streetview.api.results(params)
         results.download_links(CITY_FOLDER)
@@ -66,9 +65,7 @@ def download_img(img, places_id, point_id, session, GSVTable, k):
             path = CITY_FOLDER + "/" + img_name
             os.rename(CITY_FOLDER + "/gsv_0.jpg", path)
             insert_gsv_data(img, places_id, point_id, session, GSVTable, head, path)
-        # except Exception as err:
-        #     print(err)
-        #     continue
+
 
 
 def get_points_from_db(tab, last_searched):
@@ -96,14 +93,7 @@ def get_missed_points_from_db(tab, id_list):
 
 
 if __name__ == "__main__":
-    for k in ["AIzaSyBW9khLQRllb3JjDCM2357W3QKdzxRC60I", "AIzaSyBlquusEGrddAcpFIjffc2LHWR9dKVLXGI",
-              "AIzaSyARBo9JS2_Va_WtobbP1k_lNKMVks12IrU",
-              "AIzaSyBL7bbgQAEW4VLqOyRQT3KrQ-U0I0FOmB4", "AIzaSyB-WfGLdTUTDIpE1nih7BPy3nbubGMBC-U"
-              ]:
         try:
-            print(k,"###########################################################"
-                  "###############################################"
-                  "########################################################")
             city = "ams"
             source = "gsv"
             CITY_FOLDER = "/home/bill/Desktop/thesis/code/UDS/google_street_view/images/" + city
@@ -112,11 +102,8 @@ if __name__ == "__main__":
             not_inserted_file = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_whole_clipped_not_inserted.txt"
             last_searched_id = pois_storing_functions.get_last_id_from_logfile(logfile)
             points = get_points_from_db("google_ams_whole_clipped_40", last_searched_id)
-
-            #not_inserted_file = "/home/bill/Desktop/thesis/logfiles/" + source + "_" + city + "_whole_clipped_not_inserted.txt"
             with open(not_inserted_file, "r") as f:
                 lines = f.read().splitlines()
-            #points = get_missed_points_from_db("google_ams_whole_clipped_40", tuple(lines))
 
             session, GSVTable = pois_storing_functions.setup_db("gsv_ams_whole_clipped_40",
                                                                  "gsv_ams_whole_clipped_count", "gsv")
@@ -127,8 +114,6 @@ if __name__ == "__main__":
                 found_flag = False
                 print("POINT: ", row_number, places_id, point_id, point_lat, point_lng)
                 panoids = streetview.panoids(lat=point_lat, lon=point_lng)
-                #print(panoids)
-                #streetview.api_download(panoid, heading, flat_dir, key)
                 if not panoids:
                     with open(not_inserted_file, "a") as text_file:
                         print(f"Not found for point \n row number: {row_number}, point_id: {point_id}, "
@@ -139,19 +124,16 @@ if __name__ == "__main__":
                 # For only last year's images
                 # max_year_panoid = max(panoids, key=lambda x : x["year"] if "year" in x.keys() else 0)
                 # print(max_year_panoid)
-                # download_img(max_year_panoid, places_id, point_id, session, GSVTable, k)
-
-                #break
-
+                # download_img(max_year_panoid, places_id, point_id, session, GSVTable,
                 for img in panoids:
                     if "year" in img:
                         print(img)
-                        download_img(img, places_id, point_id, session, GSVTable, k)
+                        download_img(img, places_id, point_id, session, GSVTable)
                         found_flag = True
                 # if year information not found
                 if not found_flag and panoids:
                     print("o")
-                    download_img(panoids[0], row_number, point_id, session, GSVTable, k)
+                    download_img(panoids[0], row_number, point_id, session, GSVTable)
             # break
         except Exception as err:
             print(err)
