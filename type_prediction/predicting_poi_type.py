@@ -344,22 +344,6 @@ def preprocess_df(df, label):
         conv_dict = {'morning': 1., 'evening': 2., 'afternoon': 3., 'night': 4., 'None': np.nan}
         for i in ["Monday", "Tuesday","Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]:
             df[i] = df[i].map(conv_dict)
-
-        # , "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]].map(conv_dict)
-            # replace(conv_dict, inplace=True)
-
-        # df[["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]] = df.apply(conv_dict.get, axis=1)
-        #df = df.drop(["id"], axis=1)
-        #df = df.drop(["id", "name", "gid", "fid", "Monday", "Tuesday",
-        #                    "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "fprice"
-                         # , "day0open", "day0close"
-                         # , "day1open", "day1close"
-                         # , "day2open", "day2close"
-                         # , "day3open", "day3close"
-                         # , "day4open", "day4close"
-                         # , "day5open", "day5close"
-                         # , "day6open", "day6close"]
-                     #], axis=1)
         df = df.fillna(0)
     elif label=="spatial":
         df = df.drop(["point", "name","nightclub_1000", "nightclub_100", "nightclub_2000", "nightclub_3000"], axis=1)
@@ -371,12 +355,6 @@ def preprocess_df(df, label):
                  "building", "buildingcount", "skyscraper", "skyscrapercount", "house", "housecount",
                  "conveniencestore", "conveniencestorecount", "office", "officecount", "streetlight", "streetlightcount",
                  "trafficlight", "trafficlightcount", "trafficsign", "trafficsigncount"]]
-        # df = df[["point", "type", "tree", "treecount", "houseplant", "houseplantcount", "flower", "flowercount",
-        #          "building", "buildingcount", "skyscraper", "skyscrapercount", "house", "housecount",
-        #          "conveniencestore", "conveniencestorecount", "office", "officecount", "streetlight", "streetlightcount",
-        #          "trafficlight", "trafficlightcount", "trafficsign", "trafficsigncount"]]
-        # # convert point column to numeric to merge
-        #df["point"] = df["point"].astype("int")
         # convert true, false to numeric
         df = df * 1
         df = df.fillna(0)
@@ -384,16 +362,12 @@ def preprocess_df(df, label):
     if label == "coco":
         df = df[["placesid","type", "trafficlight", "trafficlightcount", "firehydrant", "stopsign", "stopsigncount",
                  "bench", "benchcount", "pottedplant", "pottedplantcount"]]
-        # # convert point column to numeric to merge
-        #df["point"] = df["point"].astype("int")
         # convert true, false to numeric
         df = df * 1
         df = df.fillna(0)
 
     elif label == "tf":
         df = df.drop(["id", "point", "name", "lat", "lng", "name"], axis=1)
-        # df = df.drop(["id", "name", "lat", "lng", "id", "name", "lat", "lng",
-        #          "timediffavg", "timediffmedian"], axis=1)
     elif label == "rf":
         df = df.drop(["id", "name", "lat", "lng"], axis=1)
 
@@ -503,11 +477,6 @@ def plot_dt(clf, names):
     tree.export_graphviz(clf, out_file=dot_data, feature_names=names)
     graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
     graph.write_pdf("/home/bill/Desktop/dtree_2.pdf")
-    # export_graphviz(dtree, out_file=dot_data,
-    #                 filled=True, rounded=True,
-    #                 special_characters=True)
-    # graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
-    # img = Image(graph.create_png())
 
 
 def vis_boxplot_clfs(scoring, city):
@@ -772,12 +741,12 @@ if __name__ == '__main__':
                           ("college_and_university", "college_and_university"),
                           ("gym", "outdoor_and_recreation")
                           ]
-        #
-        # for type_tuple in change_lab:
-        #     df.loc[df['type'] == type_tuple[0], 'type'] = type_tuple[1]
-        # # labels = [x for x in labels if x not in rem_labels]
-        # if change_lab[0] != "None":
-        #     labels = list(set([y for (x, y) in change_lab if x in labels]))
+
+        for type_tuple in change_lab:
+            df.loc[df['type'] == type_tuple[0], 'type'] = type_tuple[1]
+        # labels = [x for x in labels if x not in rem_labels]
+        if change_lab[0] != "None":
+            labels = list(set([y for (x, y) in change_lab if x in labels]))
 
         data_labels = pd.DataFrame(df.type, columns=["type"])
         data_features = df.drop(["type"], axis=1)
@@ -896,14 +865,7 @@ if __name__ == '__main__':
         title+="rem_"
         for rem in rem_labels:
             title+= rem + "_"
-        # title+="change_"
-        # for t in change_lab:
-        #     title+= str(t) + "_"
-        # save_with_pickle("f_score_results_" + title + city, results)
-        # save_with_pickle("f_score_names_" + title + city, names)
-        # save_with_pickle("f_score_len_models_" + title + city, len(models))
-        # save_with_pickle("f_score_title_" + title + city, title)
-        #
+        # Visualize Classifiers accuracy
         # visualize_clf_accuracy(scoring, results, names, len(models), title, city)
         labels = sorted(labels)
         cm = confusion_matrix(testlabel.type.tolist(), test_pred, labels=labels)
@@ -911,6 +873,7 @@ if __name__ == '__main__':
         print(test_pred)
         print(testlabel.type.tolist())
         print("Confusion matrix:\n%s" % cm)
+        # Visualize Conf. Matrix
         # plot_confusion_matrix(cm=cm,
         #                       normalize=True,
         #                       target_names=labels, city=city,
