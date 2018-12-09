@@ -256,7 +256,7 @@ def get_topics_from_lda(obj, model, dict, num_topics):
 
 
 if __name__ == '__main__':
-    city = "ath"
+    city = "ams"
     if city == "ams":
         lan = "nl"
     else:
@@ -293,10 +293,10 @@ if __name__ == '__main__':
                                                                                 ntopics=num_topics_small, passes=20, load=True,
                                                                                 evaluate=False, city=city)
     # , coh_v, per_v
-    print(lda_eng_5.show_topics(num_topics=10, num_words=5))
-    # print(lda_other_5.show_topics(num_topics=10, num_words=5))
-    print(lda_eng_10.show_topics(num_topics=25, num_words=5))
-
+    # print(lda_eng_5.show_topics(num_topics=10, num_words=5))
+    print(lda_other_5.show_topics(num_topics=10, num_words=5))
+    # print(lda_eng_10.show_topics(num_topics=25, num_words=5))
+    print(a)
     for g in gpoints:
         print(g)
         data = {}

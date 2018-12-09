@@ -124,7 +124,7 @@ def train_lda_models(eng_tweets, other_tweets, ntopics, passes):
     eng_term_matrix = [eng_dict.doc2bow(doc) for doc in eng_tweets]
     other_term_matrix = [other_dict.doc2bow(doc) for doc in other_tweets]
     corpora.MmCorpus.serialize("/home/bill/Desktop/thesis/code/UDS/textual_features/"
-                               "objects/en_term_matrix_tweets.mm", eng_term_matrix)
+                               "objects/en_term_matrix_tweets_" +city + ".mm", eng_term_matrix)
     if city == "ams":
         corpora.MmCorpus.serialize("/home/bill/Desktop/thesis/code/UDS/textual_features/"
                                "objects/nl_term_matrix_tweets.mm", other_term_matrix)
@@ -139,11 +139,11 @@ def train_lda_models(eng_tweets, other_tweets, ntopics, passes):
 def get_lda_models(eng_tweets, other_tweets, ntopics, passes, load, evaluate, city):
     if load:
         eng_dict = corpora.Dictionary.load("/home/bill/Desktop/thesis/code/UDS/textual_features/"
-                                           "objects/en_dict_tweets.pkl")
+                                           "objects/en_dict_tweets_" + city + ".pkl")
         lda_eng = models.LdaModel.load("/home/bill/Desktop/thesis/code/UDS/textual_features/"
-                                       "objects/lda_en_tweets" + "_" + str(ntopics) + ".model")
+                                       "objects/lda_en_tweets" + "_" + str(ntopics) + "_" + city + ".model")
         eng_term_matrix = corpora.MmCorpus("/home/bill/Desktop/thesis/code/UDS/textual_features/"
-                                           "objects/en_term_matrix_tweets.mm")
+                                           "objects/en_term_matrix_tweets_" + city + ".mm")
         if city=="ams":
             other_dict = corpora.Dictionary.load("/home/bill/Desktop/thesis/code/UDS/textual_features/"
                                               "objects/nl_dict_tweets.pkl")
@@ -163,21 +163,21 @@ def get_lda_models(eng_tweets, other_tweets, ntopics, passes, load, evaluate, ci
         if city =="ams":
             lda_eng, lda_other, eng_dict, other_dict, eng_term_matrix, other_term_matrix = train_lda_models(eng_tweets, other_tweets, ntopics, passes)
             lda_eng.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                         "lda_en_tweets" + "_" + str(ntopics) + ".model")
+                         "lda_en_tweets" + "_" + str(ntopics) + "_" + city +  ".model")
             lda_other.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                         "lda_nl_tweets" + "_" + str(ntopics) + ".model")
             eng_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                          "en_dict_tweets.pkl")
+                          "en_dict_tweets_" + city + ".pkl")
             other_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                          "nl_dict_tweets.pkl")
         if city =="ath":
             lda_eng, lda_other, eng_dict, other_dict, eng_term_matrix, other_term_matrix = train_lda_models(eng_tweets, other_tweets, ntopics, passes)
             lda_eng.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                         "lda_en_tweets" + "_" + str(ntopics) + ".model")
+                         "lda_en_tweets" + "_" + str(ntopics) + "_" + city + ".model")
             lda_other.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                         "lda_el_tweets" + "_" + str(ntopics) + ".model")
             eng_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                          "en_dict_tweets.pkl")
+                          "en_dict_tweets_" + city + ".pkl")
             other_dict.save("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
                          "el_dict_tweets.pkl")
 
@@ -254,7 +254,7 @@ def add_processed_lda_text_tweets(table, city):
 def get_processed_lda_tweets_from_db(table, city, load):
     if load:
         eng_tweets_text = load_with_pickle("/home/bill/Desktop/thesis/code/UDS/"
-                                           "textual_features/objects/en_tweets_text")
+                                           "textual_features/objects/en_tweets_text_" + city)
         if city == "ams":
             nl_tweets_text = load_with_pickle("/home/bill/Desktop/thesis/code/UDS/"
                                               "textual_features/objects/nl_tweets_text")
@@ -268,7 +268,7 @@ def get_processed_lda_tweets_from_db(table, city, load):
         eng_tweets = postgis_functions.get_lda_text_per_lang(table, "en")
         eng_tweets_text = [t["processedtextlda"].split() for t in eng_tweets]
         save_with_pickle("/home/bill/Desktop/thesis/code/UDS/textual_features/objects/"
-                         "en_tweets_text", eng_tweets_text)
+                         "en_tweets_text_" + city, eng_tweets_text)
 
         if city == "ams":
             nl_tweets = postgis_functions.get_lda_text_per_lang(table, "nl")
@@ -374,7 +374,7 @@ def add_matched_placesid_from_fsqid(store_table, ftable, gtable):
 
 if __name__ == '__main__':
     # initializations
-    city = "ams"
+    city = "ath"
     if city == "ams":
         lan = "nl"
     else:
@@ -382,12 +382,12 @@ if __name__ == '__main__':
     ftable = "matched_places_fsq_" + city
     gtable = "matched_places_google_" + city
     tweet_table = "matched_places_twitter_" + city
-    store_table = "matched_places_text_features_10_25_" + city
+    store_table = "matched_places_text_features_10_25_" + city + "_2"
     num_topics_small = 10
     num_topics_big = 25
-    # session, TFTable = pois_storing_functions.setup_db_text(store_table, "twitter",
-    #                                                         num_topics_small = 10,
-    #                                                         num_topics_big = 25, lan=lan)
+    session, TFTable = pois_storing_functions.setup_db_text(store_table, "twitter",
+                                                            num_topics_small = 10,
+                                                            num_topics_big = 25, lan=lan)
     format_str = "%Y-%m-%d %H:%M:%S"
 
     # get places
@@ -410,9 +410,11 @@ if __name__ == '__main__':
                                                         ntopics=num_topics_big, passes=20, load=True, evaluate=False, city=city)
 
     print(lda_eng_5.show_topics(num_topics=10, num_words=5))
-    print(lda_other_5.show_topics(num_topics=10, num_words=5))
-    print(a)
+    print(lda_eng_10.show_topics(num_topics=25, num_words=5))
+    print(lda_other_5.show_topics(num_topics=25, num_words=5))
+    print(lda_other_10.show_topics(num_topics=25, num_words=5))
 
+    # print(a)
     # for every matched place
     for f in fpoints:
         data = {}
@@ -524,13 +526,13 @@ if __name__ == '__main__':
         #############
         # Add to db #
         #############
-        # try:
-        #     session.add(TFTable(**data))
-        #     session.commit()
-        #     print(data["id"], " INSERTED!")
-        # except Exception as err:
-        #     session.rollback()
-        #     print("# NOT INSERTED: ", err)
+        try:
+            session.add(TFTable(**data))
+            session.commit()
+            print(data["id"], " INSERTED!")
+        except Exception as err:
+            session.rollback()
+            print("# NOT INSERTED: ", err)
         print("############################################################")
 
 
